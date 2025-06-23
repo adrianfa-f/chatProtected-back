@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  passwordHash String
+  publicKey    String
+  online       Boolean   @default(false)   
+  lastSeen     DateTime? // Nuevo campo
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sentMessages     Message[]    @relation("senderMessages")
+  receivedMessages Message[]    @relation("receiverMessages")
+  
+  chatRequestsSent ChatRequest[] @relation("fromUserRequests") 
+  chatRequestsReceived ChatRequest[] @relation("toUserRequests") 
+  
+  chatsStarted Chat[] @relation("user1Chats")
+  chatsJoined  Chat[] @relation("user2Chats")
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user1   User     @relation("user1Chats", fields: [user1Id], references: [id])
+  user2   User     @relation("user2Chats", fields: [user2Id], references: [id])
+  
+  messages Message[]
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  chatId     String
+  senderId   String
+  receiverId String
+  ciphertext String
+  nonce      String?
+  createdAt  DateTime @default(now())
+
+  chat     Chat @relation(fields: [chatId], references: [id])
+  sender   User @relation("senderMessages", fields: [senderId], references: [id])
+  receiver User @relation("receiverMessages", fields: [receiverId], references: [id])
+
+  @@map("messages")
+}
+
+model ChatRequest {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  status     String   @default("pending") 
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("fromUserRequests", fields: [fromUserId], references: [id])
+  toUser   User @relation("toUserRequests", fields: [toUserId], references: [id])
+}
