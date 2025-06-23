@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && vite build --outDir dist-client",
+    "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "PGSSLMODE=require prisma db push --accept-data-loss",
-    "prisma:studio": "prisma studio",
-    "postbuild": "npx prisma generate && npm run prisma:push && mkdir -p dist/client && cp -R dist-client/* dist/client/"
+    "prisma:push": "PGSSLMODE=require prisma db push --accept-data-loss"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
