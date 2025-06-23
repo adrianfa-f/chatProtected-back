@@ -7,7 +7,8 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "PGSSLMODE=require prisma db push --accept-data-loss"
+    "prisma:migrate": "prisma migrate deploy",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
