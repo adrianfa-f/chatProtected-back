@@ -24,22 +24,56 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-// Servir archivos estáticos (build de Vite)
-app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets'), {
-    setHeaders: (res) => {
-        res.setHeader('Content-Security-Policy', "default-src 'self'");
+// Determinar ruta base para archivos estáticos
+const isProduction = process.env.NODE_ENV === 'production';
+const staticDir = isProduction
+    ? path.join(__dirname, 'client')   // En producción: dist/client
+    : path.join(__dirname, 'dist');    // En desarrollo: dist
+
+console.log(`Serving static files from: ${staticDir}`);
+
+// Servir archivos estáticos
+app.use(express.static(staticDir, {
+    setHeaders: (res, filePath) => {
+        // Solo aplicar CSP a archivos HTML
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Security-Policy', "default-src 'self'");
+        }
     }
 }));
 
-app.get(/^(?!\/api).*/, (req, res) => {
-    const filePath = path.join(__dirname, 'dist', 'index.html');
+// Ruta catch-all para SPA
+app.get('*', (req, res) => {
+    const indexPath = path.join(staticDir, 'index.html');
 
-    fs.readFile(filePath, 'utf8', (err, html) => {
+    fs.readFile(indexPath, 'utf8', (err, html) => {
         if (err) {
             console.error('Error reading HTML file:', err);
-            return res.status(500).send('Server error');
+
+            // Respuesta alternativa si index.html no existe
+            return res.status(200).send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Chat Protected</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        h1 { color: #333; }
+                        p { color: #666; }
+                        .status { color: #e74c3c; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Backend funcionando correctamente</h1>
+                    <p>El frontend no está disponible en este momento</p>
+                    <p class="status">Error: ${err.message}</p>
+                    <p>Ruta intentada: ${indexPath}</p>
+                </body>
+                </html>
+            `);
         }
 
+        // Procesar HTML si es necesario
         const nonce = (res as any).nonce || '';
         const processedHtml = html
             .replace(/<script(?=[ >])/g, `<script nonce="${nonce}"`)
