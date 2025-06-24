@@ -42,47 +42,6 @@ app.use(express.static(staticDir, {
     }
 }));
 
-// Ruta catch-all para SPA
-app.get('*', (req, res) => {
-    const indexPath = path.join(staticDir, 'index.html');
-
-    fs.readFile(indexPath, 'utf8', (err, html) => {
-        if (err) {
-            console.error('Error reading HTML file:', err);
-
-            // Respuesta alternativa si index.html no existe
-            return res.status(200).send(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Chat Protected</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                        h1 { color: #333; }
-                        p { color: #666; }
-                        .status { color: #e74c3c; font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <h1>Backend funcionando correctamente</h1>
-                    <p>El frontend no está disponible en este momento</p>
-                    <p class="status">Error: ${err.message}</p>
-                    <p>Ruta intentada: ${indexPath}</p>
-                </body>
-                </html>
-            `);
-        }
-
-        // Procesar HTML si es necesario
-        const nonce = (res as any).nonce || '';
-        const processedHtml = html
-            .replace(/<script(?=[ >])/g, `<script nonce="${nonce}"`)
-            .replace(/<style(?=[ >])/g, `<style nonce="${nonce}"`);
-
-        res.send(processedHtml);
-    });
-});
-
 // Middleware para eliminar parámetros sensibles de URLs
 app.use((req, res, next) => {
     const sensitiveParams = ['token', 'password', 'secret'];
