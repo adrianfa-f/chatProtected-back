@@ -4,7 +4,6 @@ import securityMiddleware from './config/security';
 import { apiRateLimiter } from './middleware/rateLimit.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import apiRouter from './routes';
-import path from 'path';
 import cookieParser from 'cookie-parser';
 
 const app = express();
@@ -22,24 +21,6 @@ app.use('/api', apiRouter);
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
-
-// Determinar ruta base para archivos estáticos
-/* const isProduction = process.env.NODE_ENV === 'production';
-const staticDir = isProduction
-    ? path.join(__dirname, 'client')   // En producción: dist/client
-    : path.join(__dirname, 'dist');    // En desarrollo: dist
-
-console.log(`Serving static files from: ${staticDir}`);
-
-// Servir archivos estáticos
-app.use(express.static(staticDir, {
-    setHeaders: (res, filePath) => {
-        // Solo aplicar CSP a archivos HTML
-        if (filePath.endsWith('.html')) {
-            res.setHeader('Content-Security-Policy', "default-src 'self'");
-        }
-    }
-})); */
 
 // Middleware para eliminar parámetros sensibles de URLs
 app.use((req, res, next) => {

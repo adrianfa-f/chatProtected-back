@@ -3,14 +3,14 @@
         "target": "ES2022",
         "module": "NodeNext",
         "outDir": "./dist",
-        "rootDir": "./",
+        "rootDir": "./src",
         "strict": true,
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "allowSyntheticDefaultImports": true,
-        "baseUrl": "./",
+        "baseUrl": "./src",
         "types": [
             "node"
         ],
