@@ -5,7 +5,6 @@ import { apiRateLimiter } from './middleware/rateLimit.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import apiRouter from './routes';
 import path from 'path';
-import fs from 'fs';
 import cookieParser from 'cookie-parser';
 
 const app = express();
@@ -25,7 +24,7 @@ app.get('/health', (req, res) => {
 });
 
 // Determinar ruta base para archivos estáticos
-const isProduction = process.env.NODE_ENV === 'production';
+/* const isProduction = process.env.NODE_ENV === 'production';
 const staticDir = isProduction
     ? path.join(__dirname, 'client')   // En producción: dist/client
     : path.join(__dirname, 'dist');    // En desarrollo: dist
@@ -40,7 +39,7 @@ app.use(express.static(staticDir, {
             res.setHeader('Content-Security-Policy', "default-src 'self'");
         }
     }
-}));
+})); */
 
 // Middleware para eliminar parámetros sensibles de URLs
 app.use((req, res, next) => {
