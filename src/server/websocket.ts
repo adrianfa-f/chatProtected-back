@@ -21,6 +21,10 @@ export const setupWebSocket = (server: HttpServer) => {
                 socket.data.userId = userId;
                 console.log(`Usuario autenticado: ${userId}`);
 
+                // Unir al usuario a su sala personal
+                socket.join(userId); // AÑADIDO: Unión a sala personal
+                console.log(`Usuario ${userId} unido a su sala personal`);
+
                 await prisma.user.update({
                     where: { id: userId },
                     data: { online: true }
@@ -77,17 +81,22 @@ export const setupWebSocket = (server: HttpServer) => {
                     data: { updatedAt: new Date() }
                 });
 
-                // Verificar si el receptor está en la sala
-                const receiverSockets = await io.in(messageData.receiverId).fetchSockets();
-                const isReceiverInRoom = receiverSockets.length > 0;
+                // Verificar si el receptor está en la sala del chat (CORRECCIÓN CLAVE)
+                const chatRoom = io.sockets.adapter.rooms.get(messageData.chatId);
+                const isReceiverInRoom = chatRoom && Array.from(chatRoom).some(socketId => {
+                    const socket = io.sockets.sockets.get(socketId);
+                    return socket && socket.data.userId === messageData.receiverId;
+                });
 
-                // Enviar siempre al chat y notificar si el receptor no está en la sala
+                // Enviar siempre al chat
                 io.to(messageData.chatId).emit('receive-message', newMessage);
 
+                // Notificar solo si el receptor no está en el chat
                 if (!isReceiverInRoom) {
                     io.to(messageData.receiverId).emit('new-message-notification', {
                         chatId: messageData.chatId,
-                        senderId: messageData.senderId
+                        senderId: messageData.senderId,
+                        messageId: newMessage.id // AÑADIDO: ID del mensaje
                     });
                 }
 
