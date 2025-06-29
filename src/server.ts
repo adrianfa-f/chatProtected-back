@@ -9,16 +9,16 @@ const prisma = new PrismaClient();
 const startServer = async () => {
     try {
         await prisma.$connect();
-        console.log('✅ Conexión a DB establecida');
+        console.log('✅ Conexión a la base de datos establecida');
 
         const server = http.createServer(app);
         setupWebSocket(server);
 
         server.listen(PORT, () => {
-            console.log(`🚀 Servidor HTTP/WS en http://localhost:${PORT}`);
+            console.log(`🚀 Servidor HTTP y WebSocket corriendo en http://localhost:${PORT}`);
         });
     } catch (error) {
-        console.error('❌ Error con la DB:', error);
+        console.error('❌ Error al conectar con la base de datos:', error);
         process.exit(1);
     }
 };

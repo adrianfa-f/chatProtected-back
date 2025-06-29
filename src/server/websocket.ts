@@ -8,75 +8,40 @@ const prisma = new PrismaClient();
 export const setupWebSocket = (server: HttpServer) => {
     const io = new Server(server, {
         cors: {
-            origin: process.env.CLIENT_URL || 'http://localhost:3000',
+            origin: process.env.CLIENT_URL,
             methods: ['GET', 'POST'],
-            credentials: true
+            credentials: true,
+            allowedHeaders: ['Authorization']
         },
         connectionStateRecovery: {
             maxDisconnectionDuration: 2 * 60 * 1000,
             skipMiddlewares: true,
-        }
+        },
+        transports: ['websocket'],
+        perMessageDeflate: false,
+        cookie: false
     });
 
     io.on('connection', (socket) => {
         console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
-        socket.on('authenticate', async (accessToken: string) => {
-            try {
-                // Verificar token JWT
-                const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!);
-                const userId = (decoded as any).sub;
-
-                if (!userId) throw new Error('Token inválido: sin userId');
-
-                console.log(`[WS] Autenticando usuario: ${userId}`);
-                socket.data.userId = userId;
-
-                // Actualizar estado en DB
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: { online: true }
-                });
-
-                // Notificar a contactos
-                const userChats = await prisma.chat.findMany({
-                    where: {
-                        OR: [{ user1Id: userId }, { user2Id: userId }]
-                    },
-                    select: { id: true, user1Id: true, user2Id: true }
-                });
-
-                userChats.forEach(chat => {
-                    const otherUserId = chat.user1Id === userId ? chat.user2Id : chat.user1Id;
-                    io.to(otherUserId).emit('user-status', {
-                        userId,
-                        online: true
-                    });
-                });
-
-                console.log(`[WS] Usuario autenticado: ${userId}`);
-                socket.emit('authenticated');
-
-            } catch (error) {
-                console.error('[WS] Error en autenticación:', error);
-                socket.emit('invalid-token');
-                socket.disconnect();
-            }
-        });
+        // Obtener userId de la query
+        const userId = socket.handshake.query.userId;
+        if (userId && typeof userId === 'string') {
+            console.log(`[WS] Usuario conectado: ${userId}`);
+            socket.data.userId = userId;
+        } else {
+            console.warn('[WS] Conexión sin userId');
+        }
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
-                console.error('[WS] Intento de unirse sin autenticar');
+                console.warn('[WS] Intento de unirse sin userId');
                 return;
             }
 
             console.log(`[WS] Usuario ${socket.data.userId} uniendo a chat: ${chatId}`);
             socket.join(chatId);
-            console.log(`[WS] Usuario unido al chat: ${chatId}`);
-
-            // Debug: Listar salas
-            const rooms = Array.from(io.sockets.adapter.rooms.keys());
-            console.log(`[WS] Salas activas: ${rooms.join(', ')}`);
         });
 
         socket.on('leave-chat', (chatId: string) => {
@@ -121,13 +86,13 @@ export const setupWebSocket = (server: HttpServer) => {
                 io.to(messageData.chatId).emit('receive-message', newMessage);
 
                 // Verificar si receptor necesita notificación
-                const receivers = Array.from(io.sockets.adapter.rooms.get(messageData.chatId) || []);
-                const isReceiverPresent = receivers.some(sid => {
-                    const sock = io.sockets.sockets.get(sid);
-                    return sock?.data.userId === messageData.receiverId;
+                const chatRoom = io.sockets.adapter.rooms.get(messageData.chatId);
+                const isReceiverInRoom = chatRoom && Array.from(chatRoom).some(socketId => {
+                    const socket = io.sockets.sockets.get(socketId);
+                    return socket?.data.userId === messageData.receiverId;
                 });
 
-                if (!isReceiverPresent) {
+                if (!isReceiverInRoom) {
                     io.to(messageData.receiverId).emit('new-message-notification', {
                         chatId: messageData.chatId,
                         senderId: messageData.senderId
@@ -143,56 +108,15 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('test-event', (data) => {
-            console.log(`[WS] Test recibido de ${socket.data.userId || 'anon'}:`, data);
-            socket.emit('test-response', {
-                received: data,
-                serverTime: new Date().toISOString()
-            });
-        });
-
         socket.on('disconnect', async (reason) => {
             console.log(`[WS] Desconexión: ${socket.id} | Razón: ${reason}`);
-            const userId = socket.data.userId;
-
-            if (userId) {
-                try {
-                    // Actualizar estado en DB
-                    await prisma.user.update({
-                        where: { id: userId },
-                        data: {
-                            online: false,
-                            lastSeen: new Date()
-                        }
-                    });
-
-                    // Notificar a contactos
-                    const userChats = await prisma.chat.findMany({
-                        where: {
-                            OR: [{ user1Id: userId }, { user2Id: userId }]
-                        }
-                    });
-
-                    userChats.forEach(chat => {
-                        const otherUserId = chat.user1Id === userId ? chat.user2Id : chat.user1Id;
-                        io.to(otherUserId).emit('user-status', {
-                            userId,
-                            online: false,
-                            lastSeen: new Date()
-                        });
-                    });
-                } catch (error) {
-                    console.error('[WS] Error al actualizar estado:', error);
-                }
-            }
         });
     });
 
-    // Manejar errores de conexión
     io.engine.on("connection_error", (err) => {
-        console.error('[WS] Connection error:', err.req);
-        console.error('[WS] Code:', err.code, '| Message:', err.message);
-        console.error('[WS] Context:', err.context);
+        console.error('[WS] Error de conexión:', err.req);
+        console.error('[WS] Código:', err.code, '| Mensaje:', err.message);
+        console.error('[WS] Contexto:', err.context);
     });
 
     return io;
