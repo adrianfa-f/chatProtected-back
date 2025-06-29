@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -12,16 +13,22 @@ export const setupWebSocket = (server: HttpServer) => {
             credentials: true
         },
         connectionStateRecovery: {
-            maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutos
+            maxDisconnectionDuration: 2 * 60 * 1000,
             skipMiddlewares: true,
         }
     });
 
     io.on('connection', (socket) => {
-        console.log(`[WS] Usuario conectado: ${socket.id} - IP: ${socket.handshake.address}`);
+        console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
-        socket.on('authenticate', async (userId: string) => {
+        socket.on('authenticate', async (accessToken: string) => {
             try {
+                // Verificar token JWT
+                const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!);
+                const userId = (decoded as any).sub;
+
+                if (!userId) throw new Error('Token inválido: sin userId');
+
                 console.log(`[WS] Autenticando usuario: ${userId}`);
                 socket.data.userId = userId;
 
@@ -33,7 +40,9 @@ export const setupWebSocket = (server: HttpServer) => {
 
                 // Notificar a contactos
                 const userChats = await prisma.chat.findMany({
-                    where: { OR: [{ user1Id: userId }, { user2Id: userId }] },
+                    where: {
+                        OR: [{ user1Id: userId }, { user2Id: userId }]
+                    },
                     select: { id: true, user1Id: true, user2Id: true }
                 });
 
@@ -46,25 +55,35 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
 
                 console.log(`[WS] Usuario autenticado: ${userId}`);
+                socket.emit('authenticated');
+
             } catch (error) {
                 console.error('[WS] Error en autenticación:', error);
+                socket.emit('invalid-token');
+                socket.disconnect();
             }
         });
 
         socket.on('join-chat', (chatId: string) => {
-            console.log(`[WS] Usuario ${socket.data.userId} solicitó unirse al chat ${chatId}`);
-            socket.join(chatId);
-            console.log(`[WS] Usuario ${socket.data.userId} unido al chat ${chatId}`);
+            if (!socket.data.userId) {
+                console.error('[WS] Intento de unirse sin autenticar');
+                return;
+            }
 
-            // Debug: Listar todas las salas
-            const rooms = io.sockets.adapter.rooms;
-            console.log(`[WS] Salas activas: ${Array.from(rooms.keys()).join(', ')}`);
+            console.log(`[WS] Usuario ${socket.data.userId} uniendo a chat: ${chatId}`);
+            socket.join(chatId);
+            console.log(`[WS] Usuario unido al chat: ${chatId}`);
+
+            // Debug: Listar salas
+            const rooms = Array.from(io.sockets.adapter.rooms.keys());
+            console.log(`[WS] Salas activas: ${rooms.join(', ')}`);
         });
 
         socket.on('leave-chat', (chatId: string) => {
-            console.log(`[WS] Usuario ${socket.data.userId} solicitó salir del chat ${chatId}`);
+            if (!socket.data.userId) return;
+
+            console.log(`[WS] Usuario ${socket.data.userId} saliendo de chat: ${chatId}`);
             socket.leave(chatId);
-            console.log(`[WS] Usuario ${socket.data.userId} salió del chat ${chatId}`);
         });
 
         socket.on('send-message', async (messageData: {
@@ -75,8 +94,11 @@ export const setupWebSocket = (server: HttpServer) => {
             nonce?: string;
         }) => {
             try {
-                console.log(`[WS] Mensaje recibido de ${messageData.senderId} a ${messageData.receiverId} en chat ${messageData.chatId}`);
-                console.log(`[WS] Contenido del mensaje (truncado): ${messageData.ciphertext.substring(0, 20)}...`);
+                if (!socket.data.userId) {
+                    throw new Error('Usuario no autenticado');
+                }
+
+                console.log(`[WS] Mensaje recibido de ${messageData.senderId} para ${messageData.receiverId}`);
 
                 // Crear mensaje en DB
                 const newMessage = await prisma.message.create({
@@ -95,18 +117,17 @@ export const setupWebSocket = (server: HttpServer) => {
                     data: { updatedAt: new Date() }
                 });
 
-                // Verificar si el receptor está en la sala
-                const chatRoom = io.sockets.adapter.rooms.get(messageData.chatId);
-                const isReceiverInRoom = chatRoom && Array.from(chatRoom).some(socketId => {
-                    const socket = io.sockets.sockets.get(socketId);
-                    return socket?.data.userId === messageData.receiverId;
-                });
-
-                console.log(`[WS] Emitiendo mensaje a sala: ${messageData.chatId}`);
+                // Emitir a todos en el chat
                 io.to(messageData.chatId).emit('receive-message', newMessage);
 
-                if (!isReceiverInRoom) {
-                    console.log(`[WS] Receptor no está en la sala, enviando notificación a ${messageData.receiverId}`);
+                // Verificar si receptor necesita notificación
+                const receivers = Array.from(io.sockets.adapter.rooms.get(messageData.chatId) || []);
+                const isReceiverPresent = receivers.some(sid => {
+                    const sock = io.sockets.sockets.get(sid);
+                    return sock?.data.userId === messageData.receiverId;
+                });
+
+                if (!isReceiverPresent) {
                     io.to(messageData.receiverId).emit('new-message-notification', {
                         chatId: messageData.chatId,
                         senderId: messageData.senderId
@@ -122,9 +143,8 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        // Evento de prueba
         socket.on('test-event', (data) => {
-            console.log(`[WS] Evento de prueba recibido de ${socket.data.userId}:`, data);
+            console.log(`[WS] Test recibido de ${socket.data.userId || 'anon'}:`, data);
             socket.emit('test-response', {
                 received: data,
                 serverTime: new Date().toISOString()
@@ -132,7 +152,7 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('disconnect', async (reason) => {
-            console.log(`[WS] Usuario desconectado: ${socket.id} (Razón: ${reason})`);
+            console.log(`[WS] Desconexión: ${socket.id} | Razón: ${reason}`);
             const userId = socket.data.userId;
 
             if (userId) {
@@ -148,7 +168,9 @@ export const setupWebSocket = (server: HttpServer) => {
 
                     // Notificar a contactos
                     const userChats = await prisma.chat.findMany({
-                        where: { OR: [{ user1Id: userId }, { user2Id: userId }] }
+                        where: {
+                            OR: [{ user1Id: userId }, { user2Id: userId }]
+                        }
                     });
 
                     userChats.forEach(chat => {
@@ -160,17 +182,17 @@ export const setupWebSocket = (server: HttpServer) => {
                         });
                     });
                 } catch (error) {
-                    console.error('[WS] Error al actualizar estado de desconexión:', error);
+                    console.error('[WS] Error al actualizar estado:', error);
                 }
             }
         });
     });
 
-    // Logging adicional para eventos de servidor
+    // Manejar errores de conexión
     io.engine.on("connection_error", (err) => {
-        console.error('[WS] Error de conexión:', err.req);     // la solicitud de solicitud http
-        console.error('[WS] Detalles:', err.code, err.message); // el código de error, por ejemplo 1
-        console.error('[WS] Contexto:', err.context);           // algún contexto adicional
+        console.error('[WS] Connection error:', err.req);
+        console.error('[WS] Code:', err.code, '| Message:', err.message);
+        console.error('[WS] Context:', err.context);
     });
 
     return io;
