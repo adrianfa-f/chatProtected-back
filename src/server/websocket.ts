@@ -65,17 +65,6 @@ export const setupWebSocket = (server: HttpServer) => {
 
                 console.log(`[WS] Mensaje recibido de ${messageData.senderId} para ${messageData.receiverId}`);
 
-                // Crear mensaje en DB
-                const newMessage = await prisma.message.create({
-                    data: {
-                        chatId: messageData.chatId,
-                        senderId: messageData.senderId,
-                        receiverId: messageData.receiverId,
-                        ciphertext: messageData.ciphertext,
-                        nonce: messageData.nonce
-                    }
-                });
-
                 // Actualizar chat
                 await prisma.chat.update({
                     where: { id: messageData.chatId },
@@ -83,7 +72,7 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
 
                 // Emitir a todos en el chat
-                io.to(messageData.chatId).emit('receive-message', newMessage);
+                io.to(messageData.chatId).emit('receive-message', messageData);
 
                 // Verificar si receptor necesita notificación
                 const chatRoom = io.sockets.adapter.rooms.get(messageData.chatId);
