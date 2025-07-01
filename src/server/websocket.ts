@@ -1,7 +1,6 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -25,7 +24,6 @@ export const setupWebSocket = (server: HttpServer) => {
     io.on('connection', (socket) => {
         console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
-        // Obtener userId de la query
         const userId = socket.handshake.query.userId;
         if (userId && typeof userId === 'string') {
             console.log(`[WS] Usuario conectado: ${userId}`);
@@ -39,63 +37,17 @@ export const setupWebSocket = (server: HttpServer) => {
                 console.warn('[WS] Intento de unirse sin userId');
                 return;
             }
-
             console.log(`[WS] Usuario ${socket.data.userId} uniendo a chat: ${chatId}`);
             socket.join(chatId);
         });
 
         socket.on('leave-chat', (chatId: string) => {
             if (!socket.data.userId) return;
-
             console.log(`[WS] Usuario ${socket.data.userId} saliendo de chat: ${chatId}`);
             socket.leave(chatId);
         });
 
-        socket.on('send-message', async (messageData: {
-            chatId: string;
-            senderId: string;
-            receiverId: string;
-            ciphertext: string;
-            nonce?: string;
-        }) => {
-            try {
-                if (!socket.data.userId) {
-                    throw new Error('Usuario no autenticado');
-                }
-
-                console.log(`[WS] Mensaje recibido de ${messageData.senderId} para ${messageData.receiverId}`);
-
-                // Actualizar chat
-                await prisma.chat.update({
-                    where: { id: messageData.chatId },
-                    data: { updatedAt: new Date() }
-                });
-
-                // Emitir a todos en el chat
-                io.to(messageData.chatId).emit('receive-message', messageData);
-
-                // Verificar si receptor necesita notificación
-                const chatRoom = io.sockets.adapter.rooms.get(messageData.chatId);
-                const isReceiverInRoom = chatRoom && Array.from(chatRoom).some(socketId => {
-                    const socket = io.sockets.sockets.get(socketId);
-                    return socket?.data.userId === messageData.receiverId;
-                });
-
-                if (!isReceiverInRoom) {
-                    io.to(messageData.receiverId).emit('new-message-notification', {
-                        chatId: messageData.chatId,
-                        senderId: messageData.senderId
-                    });
-                }
-
-            } catch (error) {
-                console.error('[WS] Error al enviar mensaje:', error);
-                socket.emit('message-error', {
-                    error: 'Failed to send message',
-                    details: error
-                });
-            }
-        });
+        // ELIMINADO EL EVENTO send-message - AHORA SE MANEJA POR HTTP
 
         socket.on('disconnect', async (reason) => {
             console.log(`[WS] Desconexión: ${socket.id} | Razón: ${reason}`);
