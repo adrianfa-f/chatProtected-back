@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
-import messageService from 'services/message.service';
+import messageService from '../services/message.service';
 
 
 const prisma = new PrismaClient();
