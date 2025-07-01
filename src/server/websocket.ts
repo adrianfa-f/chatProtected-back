@@ -52,11 +52,13 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('send-message', async (messageData: {
+            id: string;
             chatId: string;
             senderId: string;
             receiverId: string;
             ciphertext: string;
             nonce?: string;
+            createdAt: string;
         }) => {
             try {
                 if (!socket.data.userId) {
