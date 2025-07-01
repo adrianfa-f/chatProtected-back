@@ -15,7 +15,8 @@ export const register = async (req: Request, res: Response) => {
         // Configurar cookie segura con token httpOnly
         res.cookie('authToken', result.token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true,
+            /* secure: process.env.NODE_ENV === 'production', */
             sameSite: 'none',
             maxAge: 24 * 60 * 60 * 1000, // 1 día
             path: '/',
@@ -47,7 +48,8 @@ export const login = async (req: Request, res: Response) => {
         // Configurar cookie segura con token httpOnly
         res.cookie('authToken', result.token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true,
+            /* secure: process.env.NODE_ENV === 'production', */
             sameSite: 'none',
             maxAge: 24 * 60 * 60 * 1000, // 1 día
             path: '/',
