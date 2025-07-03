@@ -31,9 +31,22 @@ export const setupWebSocket = (server: HttpServer) => {
         if (userId && typeof userId === 'string') {
             console.log(`[WS] Usuario conectado: ${userId}`);
             socket.data.userId = userId;
+            if (userId) socket.join(userId);
         } else {
             console.warn('[WS] Conexión sin userId');
         }
+
+        socket.on('send-chat-request', async (toUserId: string) => {
+            const fromUserId = socket.data.userId;
+            if (!fromUserId) return;
+
+            const request = await prisma.chatRequest.create({
+                data: { fromUserId, toUserId, status: 'pending' }
+            });
+
+            // Notifico al destinatario en su sala
+            io.to(toUserId).emit('receive-chat-request', request);
+        });
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
