@@ -38,15 +38,64 @@ export const setupWebSocket = (server: HttpServer) => {
 
         socket.on('send-chat-request', async (toUserId: string) => {
             const fromUserId = socket.data.userId;
-            if (!fromUserId) return;
+            if (!fromUserId) {
+                console.warn('[WS] Usuario no autenticado para enviar solicitud de chat');
+                return;
+            }
 
-            const request = await prisma.chatRequest.create({
-                data: { fromUserId, toUserId, status: 'pending' }
-            });
+            try {
+                // Crear la solicitud básica (solo IDs)
+                const created = await prisma.chatRequest.create({
+                    data: {
+                        fromUserId,
+                        toUserId,
+                        status: 'pending',
+                    }
+                });
 
-            // Notifico al destinatario en su sala
-            io.to(toUserId).emit('receive-chat-request', request);
+                // Buscar la solicitud con datos completos
+                const fullRequest = await prisma.chatRequest.findUnique({
+                    where: { id: created.id },
+                    include: {
+                        fromUser: {
+                            select: {
+                                id: true,
+                                username: true,
+                                publicKey: true
+                            }
+                        },
+                        toUser: {
+                            select: {
+                                id: true,
+                                username: true,
+                                publicKey: true
+                            }
+                        }
+                    }
+                });
+
+                // Formatear como espera el frontend
+                const formattedRequest = {
+                    id: fullRequest!.id,
+                    fromUser: fullRequest!.fromUser,
+                    toUser: fullRequest!.toUser,
+                    status: fullRequest!.status,
+                    timestamp: fullRequest!.createdAt
+                };
+
+                // Emitir al destinatario
+                io.to(toUserId).emit('receive-chat-request', formattedRequest);
+
+                console.log(`[WS] Solicitud de chat emitida a ${toUserId}`);
+            } catch (error) {
+                console.error('[WS] Error al procesar solicitud de chat:', error);
+                socket.emit('chat-request-error', {
+                    error: 'No se pudo enviar la solicitud de chat',
+                    details: error instanceof Error ? error.message : 'Error desconocido'
+                });
+            }
         });
+
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
