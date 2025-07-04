@@ -20,7 +20,7 @@ export class ChatService {
     }
 
     static async getUserChats(userId: string) {
-        return await prisma.chat.findMany({
+        const chats = await prisma.chat.findMany({
             where: {
                 OR: [
                     { user1Id: userId },
@@ -34,7 +34,29 @@ export class ChatService {
                     take: 1,
                     orderBy: { createdAt: 'desc' }
                 }
+            },
+            orderBy: {
+                updatedAt: 'desc'
             }
         });
-    };
+
+        // Agregar unreadCount para cada chat
+        const chatsWithUnread = await Promise.all(chats.map(async chat => {
+            const count = await prisma.message.count({
+                where: {
+                    chatId: chat.id,
+                    receiverId: userId,
+                    status: 'delivered'
+                }
+            });
+
+            return {
+                ...chat,
+                unreadCount: count
+            };
+        }));
+
+        return chatsWithUnread;
+    }
+
 }
