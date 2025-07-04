@@ -96,6 +96,52 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
+        socket.on('accept-chat-request', async (chatRequestId: string) => {
+            const userId = socket.data.userId;
+            if (!userId) return;
+
+            try {
+                const chatRequest = await prisma.chatRequest.findUnique({
+                    where: { id: chatRequestId }
+                });
+
+                if (!chatRequest || chatRequest.status !== 'pending') {
+                    socket.emit('chat-accept-error', { message: 'Solicitud inválida o ya aceptada.' });
+                    return;
+                }
+
+                // Crear el chat
+                const newChat = await prisma.chat.create({
+                    data: {
+                        user1Id: chatRequest.fromUserId,
+                        user2Id: chatRequest.toUserId
+                    }
+                });
+
+                // Actualizar estado del request
+                await prisma.chatRequest.update({
+                    where: { id: chatRequestId },
+                    data: { status: 'accepted' }
+                });
+
+                // Emitir evento al otro usuario para que actualice su chat list
+                const otherUserId = userId === chatRequest.fromUserId
+                    ? chatRequest.toUserId
+                    : chatRequest.fromUserId;
+
+                io.to(otherUserId).emit('new-chat-created', {
+                    chatId: newChat.id
+                });
+
+                // Confirmar al usuario que realizó la aceptación
+                socket.emit('chat-accepted', { success: true });
+
+                console.log(`[WS] Chat creado entre ${chatRequest.fromUserId} y ${chatRequest.toUserId}`);
+            } catch (error) {
+                console.error('[WS] Error al aceptar solicitud de chat:', error);
+                socket.emit('chat-accept-error', { message: 'Ocurrió un error al aceptar la solicitud.' });
+            }
+        });
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
