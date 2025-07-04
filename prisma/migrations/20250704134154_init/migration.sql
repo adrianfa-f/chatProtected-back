@@ -4,6 +4,8 @@ CREATE TABLE "User" (
     "username" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "publicKey" TEXT NOT NULL,
+    "online" BOOLEAN NOT NULL DEFAULT false,
+    "lastSeen" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -30,6 +32,7 @@ CREATE TABLE "messages" (
     "ciphertext" TEXT NOT NULL,
     "nonce" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "status" TEXT NOT NULL DEFAULT 'delivered',
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );

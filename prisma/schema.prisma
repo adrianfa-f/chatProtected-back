@@ -13,7 +13,7 @@ model User {
   passwordHash String
   publicKey    String
   online       Boolean   @default(false)   
-  lastSeen     DateTime? // Nuevo campo
+  lastSeen     DateTime? 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -48,7 +48,7 @@ model Message {
   ciphertext String
   nonce      String?
   createdAt  DateTime @default(now())
-  status     String   @default("delivered")
+  status     String   @default("delivered") //solo tenemos delivered y seen
 
   chat     Chat @relation(fields: [chatId], references: [id])
   sender   User @relation("senderMessages", fields: [senderId], references: [id])
