@@ -38,10 +38,22 @@ export default {
         };
     },
 
-    async getMessagesByChat(chatId: string) {
+    async getMessagesByChat(chatId: string, receiverId: string) {
+        // 🟣 Actualizar los mensajes entregados a "seen"
+        await prisma.message.updateMany({
+            where: {
+                chatId,
+                receiverId,
+                status: 'delivered'
+            },
+            data: { status: 'seen' }
+        });
+
+        // 📥 Luego devolver los mensajes
         return prisma.message.findMany({
             where: { chatId },
             orderBy: { createdAt: 'asc' }
         });
     }
+
 };

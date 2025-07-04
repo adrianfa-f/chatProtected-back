@@ -30,7 +30,8 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const getChatMessages = async (req: Request, res: Response) => {
     try {
         const { chatId } = req.params;
-        const messages = await MessageService.getMessagesByChat(chatId);
+        const receiverId = req.body.userId;
+        const messages = await MessageService.getMessagesByChat(chatId, receiverId);
 
         res.status(StatusCodes.OK).json({
             success: true,

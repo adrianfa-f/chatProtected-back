@@ -48,6 +48,7 @@ model Message {
   ciphertext String
   nonce      String?
   createdAt  DateTime @default(now())
+  status     String   @default("delivered")
 
   chat     Chat @relation(fields: [chatId], references: [id])
   sender   User @relation("senderMessages", fields: [senderId], references: [id])
