@@ -32,7 +32,7 @@ export class ChatService {
                 user2: true,
                 messages: {
                     take: 1,
-                    orderBy: { createdAt: 'desc' }
+                    orderBy: { createdAt: 'desc' } // 👈 Solo el último mensaje
                 }
             },
             orderBy: {
@@ -40,9 +40,8 @@ export class ChatService {
             }
         });
 
-        // Agregar unreadCount para cada chat
-        const chatsWithUnread = await Promise.all(chats.map(async chat => {
-            const count = await prisma.message.count({
+        const chatsWithExtras = await Promise.all(chats.map(async chat => {
+            const unreadCount = await prisma.message.count({
                 where: {
                     chatId: chat.id,
                     receiverId: userId,
@@ -50,13 +49,18 @@ export class ChatService {
                 }
             });
 
+            const lastMessageObj = chat.messages?.[0];
+            const lastMessage = lastMessageObj?.ciphertext || null; // O puedes usar plaintext si lo tienes
+
             return {
                 ...chat,
-                unreadCount: count
+                lastMessage,
+                unreadCount
             };
         }));
 
-        return chatsWithUnread;
+        return chatsWithExtras;
     }
+
 
 }
