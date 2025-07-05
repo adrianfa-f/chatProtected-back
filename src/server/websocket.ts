@@ -180,6 +180,13 @@ export const setupWebSocket = (server: HttpServer) => {
                     messageData.ciphertext
                 );
 
+                io.to(savedMessage.receiverId).emit('chat-message-summary', {
+                    chatId: savedMessage.chatId,
+                    senderId: savedMessage.senderId,
+                    ciphertext: savedMessage.ciphertext
+                });
+
+
                 // 📅 Actualizar última actividad del chat
                 await prisma.chat.update({
                     where: { id: messageData.chatId },
