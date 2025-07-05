@@ -32,7 +32,12 @@ export class ChatService {
                 user2: true,
                 messages: {
                     take: 1,
-                    orderBy: { createdAt: 'desc' } // 👈 Solo el último mensaje
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        ciphertext: true,
+                        senderId: true,
+                        receiverId: true
+                    }
                 }
             },
             orderBy: {
@@ -49,18 +54,18 @@ export class ChatService {
                 }
             });
 
-            const lastMessageObj = chat.messages?.[0];
-            const lastMessage = lastMessageObj?.ciphertext || null; // O puedes usar plaintext si lo tienes
+            const last = chat.messages[0]; // 👈 ya incluye senderId
+            const lastMessage = last?.ciphertext || null;
+            const lastSenderId = last?.senderId || null;
 
             return {
                 ...chat,
                 lastMessage,
+                lastSenderId,
                 unreadCount
             };
         }));
 
         return chatsWithExtras;
     }
-
-
 }
