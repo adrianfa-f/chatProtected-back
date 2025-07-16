@@ -233,8 +233,9 @@ export const setupWebSocket = (server: HttpServer) => {
                     if (receiverUser && receiverUser.pushSubscription) {
                         await sendPushNotification(
                             messageData.receiverId,
-                            `Nuevo mensaje de ${senderName}`,
-                            messageData.chatId
+                            messageData.ciphertext,
+                            messageData.chatId,
+                            senderName
                         );
                     }
                 }

@@ -40,7 +40,7 @@ export async function savePushSubscription(userId: string, subscription: PushSub
 }
 
 // Modificar la función sendPushNotification
-export async function sendPushNotification(userId: string, message: string, chatId: string) {
+export async function sendPushNotification(userId: string, message: string, chatId: string, senderName: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { pushSubscription: true }
@@ -63,8 +63,8 @@ export async function sendPushNotification(userId: string, message: string, chat
 
     // 6. Crear payload
     const payload = JSON.stringify({
-        title: 'Nuevo mensaje',
-        body: message,
+        title: senderName,
+        body: 'Nuevo mensaje',
         icon: '/icon-192x192.png',
         data: {
             url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
