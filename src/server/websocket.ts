@@ -224,12 +224,19 @@ export const setupWebSocket = (server: HttpServer) => {
                     });
                 }
 
+                const receiver = await prisma.user.findUnique({
+                    where: { id: messageData.receiverId },
+                    select: { pushSubscription: true }
+                });
+
                 // 💌 Enviar notificación PUSH al receptor
-                await sendPushNotification(
-                    messageData.receiverId,
-                    `Nuevo mensaje de ${senderName}`,
-                    messageData.chatId
-                );
+                if (receiver && receiver.pushSubscription) {
+                    await sendPushNotification(
+                        messageData.receiverId,
+                        `Nuevo mensaje de ${senderName}`,
+                        messageData.chatId
+                    );
+                }
 
             } catch (error) {
                 console.error('[WS] Error al procesar mensaje:', error);

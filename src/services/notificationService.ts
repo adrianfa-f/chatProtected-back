@@ -25,39 +25,69 @@ interface PushSubscriptionData {
 }
 
 export async function savePushSubscription(userId: string, subscription: PushSubscriptionData) {
+    const subscriptionData = {
+        endpoint: subscription.endpoint,
+        keys: {
+            auth: subscription.keys.auth,
+            p256dh: subscription.keys.p256dh
+        }
+    };
+
     await prisma.user.update({
         where: { id: userId },
-        data: { pushSubscription: subscription as any } // Forzar tipo para Prisma
+        data: { pushSubscription: subscriptionData }
     });
 }
 
+// Modificar la función sendPushNotification
 export async function sendPushNotification(userId: string, message: string, chatId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { pushSubscription: true }
     });
 
-    if (!user || !user.pushSubscription) return;
+    // 4. Verificar y castear explícitamente el tipo
+    const subscriptionData = user?.pushSubscription as unknown as PushSubscriptionData | null;
 
-    // Convertir el objeto JSON a PushSubscription
-    const subscription = user.pushSubscription as unknown as PushSubscription;
+    if (!subscriptionData) return;
 
+    // 5. Crear objeto de suscripción compatible con web-push
+    const subscription: PushSubscription = {
+        endpoint: subscriptionData.endpoint,
+        expirationTime: null,
+        keys: {
+            auth: subscriptionData.keys.auth,
+            p256dh: subscriptionData.keys.p256dh
+        }
+    };
+
+    // 6. Crear payload
     const payload = JSON.stringify({
         title: 'Nuevo mensaje',
         body: message,
         icon: '/icon-192x192.png',
-        data: { url: `${process.env.FRONTEND_URL}/chat/${chatId}` }
+        data: {
+            url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
+            chatId: chatId
+        }
     });
 
     try {
+        console.log(`[Push] Enviando notificación a ${userId}`);
         await webPush.sendNotification(subscription, payload);
+        console.log(`[Push] Notificación enviada con éxito a ${userId}`);
     } catch (error: any) {
-        console.error('Error enviando notificación push:', error);
-        // Eliminar suscripción inválida
+        console.error('[Push] Error enviando notificación:', error);
         if (error.statusCode === 410) {
+            console.log(`[Push] Eliminando suscripción inválida para ${userId}`);
+            // 7. Actualizar usando 'set: null' para evitar errores de tipo
             await prisma.user.update({
                 where: { id: userId },
-                data: { pushSubscription: null as any } // Forzar tipo para Prisma
+                data: {
+                    pushSubscription: {
+                        set: null
+                    } as any
+                }
             });
         }
     }
