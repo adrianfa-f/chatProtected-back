@@ -9,6 +9,6 @@ router.use(authenticate);
 
 router.get('/search', searchUsers);
 router.get('/:userId/public-key', getUserPublicKey);
-router.post('/subscribe-push', subscribeUser);
+router.post('/subscribe', subscribeUser);
 
 export default router;

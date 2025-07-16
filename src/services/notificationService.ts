@@ -46,7 +46,7 @@ export async function sendPushNotification(userId: string, message: string, chat
         title: 'Nuevo mensaje',
         body: message,
         icon: '/icon-192x192.png',
-        data: { url: `${process.env.CLIENT_URL}/chat/${chatId}` }
+        data: { url: `${process.env.FRONTEND_URL}/chat/${chatId}` }
     });
 
     try {
