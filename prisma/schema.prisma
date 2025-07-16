@@ -16,6 +16,7 @@ model User {
   lastSeen     DateTime? 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  pushSubscription Json?   @db.Json
 
   sentMessages     Message[]    @relation("senderMessages")
   receivedMessages Message[]    @relation("receiverMessages")

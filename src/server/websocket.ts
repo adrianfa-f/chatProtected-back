@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
 import messageService from '../services/message.service';
+import { sendPushNotification } from '../services/notificationService';
 
 
 const prisma = new PrismaClient();
@@ -180,12 +181,12 @@ export const setupWebSocket = (server: HttpServer) => {
                     messageData.ciphertext
                 );
 
-                io.to(savedMessage.receiverId).emit('chat-message-summary', {
-                    chatId: savedMessage.chatId,
-                    senderId: savedMessage.senderId,
-                    ciphertext: savedMessage.ciphertext
+                // Obtener nombre del remitente para la notificación
+                const sender = await prisma.user.findUnique({
+                    where: { id: messageData.senderId },
+                    select: { username: true }
                 });
-
+                const senderName = sender?.username || 'Usuario';
 
                 // 📅 Actualizar última actividad del chat
                 await prisma.chat.update({
@@ -216,6 +217,13 @@ export const setupWebSocket = (server: HttpServer) => {
                         messageId: savedMessage.id
                     });
                 }
+
+                // 💌 Enviar notificación PUSH al receptor
+                await sendPushNotification(
+                    messageData.receiverId,
+                    `Nuevo mensaje de ${senderName}`,
+                    messageData.chatId
+                );
 
             } catch (error) {
                 console.error('[WS] Error al procesar mensaje:', error);
