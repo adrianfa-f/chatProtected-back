@@ -200,7 +200,7 @@ export const setupWebSocket = (server: HttpServer) => {
                     data: { updatedAt: new Date() }
                 });
 
-                // 📨 Construir mensaje completo para enviar
+                // 📢 Construir mensaje completo para enviar
                 const fullMessage = {
                     ...savedMessage,
                     createdAt: savedMessage.createdAt.toISOString()
@@ -217,25 +217,26 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
 
                 if (!isReceiverInRoom) {
+                    // Emitir evento de notificación solo al receptor
                     io.to(messageData.receiverId).emit('new-message-notification', {
                         chatId: messageData.chatId,
                         senderId: messageData.senderId,
                         messageId: savedMessage.id
                     });
-                }
 
-                const receiver = await prisma.user.findUnique({
-                    where: { id: messageData.receiverId },
-                    select: { pushSubscription: true }
-                });
+                    // 💌 Enviar notificación PUSH solo si hay suscripción
+                    const receiverUser = await prisma.user.findUnique({
+                        where: { id: messageData.receiverId },
+                        select: { pushSubscription: true }
+                    });
 
-                // 💌 Enviar notificación PUSH al receptor
-                if (receiver && receiver.pushSubscription) {
-                    await sendPushNotification(
-                        messageData.receiverId,
-                        `Nuevo mensaje de ${senderName}`,
-                        messageData.chatId
-                    );
+                    if (receiverUser && receiverUser.pushSubscription) {
+                        await sendPushNotification(
+                            messageData.receiverId,
+                            `Nuevo mensaje de ${senderName}`,
+                            messageData.chatId
+                        );
+                    }
                 }
 
             } catch (error) {
@@ -246,7 +247,6 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
             }
         });
-
         socket.on('disconnect', (reason) => {
             console.log(`[WS] Desconexión: ${socket.id} | Razón: ${reason}`);
         });
