@@ -181,6 +181,12 @@ export const setupWebSocket = (server: HttpServer) => {
                     messageData.ciphertext
                 );
 
+                io.to(savedMessage.receiverId).emit('chat-message-summary', {
+                    chatId: savedMessage.chatId,
+                    senderId: savedMessage.senderId,
+                    ciphertext: savedMessage.ciphertext
+                });
+
                 // Obtener nombre del remitente para la notificación
                 const sender = await prisma.user.findUnique({
                     where: { id: messageData.senderId },
