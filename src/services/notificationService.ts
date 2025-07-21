@@ -64,7 +64,7 @@ export async function sendPushNotification(userId: string, message: string, chat
     // 6. Crear payload
     const payload = JSON.stringify({
         title: senderName,
-        body: 'Nuevo mensaje',
+        body: message,
         icon: '/icon-192x192.png',
         data: {
             url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
