@@ -39,19 +39,30 @@ export default {
     },
 
     async getMessagesByChat(chatId: string, receiverId: string) {
-        // 🟣 Actualizar los mensajes entregados a "seen"
+        // Obtener el timestamp del último visto del receptor
+        const receiver = await prisma.user.findUnique({
+            where: { id: receiverId },
+            select: { lastSeen: true }
+        });
+
+        // 🟣 Actualizar solo mensajes entregados DESPUÉS del último seen
         await prisma.message.updateMany({
             where: {
                 chatId,
                 receiverId,
-                status: 'delivered'
+                status: 'delivered',
+                createdAt: { gt: receiver?.lastSeen || new Date(0) }
             },
             data: { status: 'seen' }
         });
 
-        // 📥 Luego devolver los mensajes
+        // 📥 Devolver solo mensajes nuevos (posteriores al lastSeen)
         return prisma.message.findMany({
-            where: { chatId },
+            where: {
+                chatId,
+                receiverId,
+                createdAt: { gt: receiver?.lastSeen || new Date(0) }
+            },
             orderBy: { createdAt: 'asc' }
         });
     }

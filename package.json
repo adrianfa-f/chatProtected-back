@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
+    "@types/simple-peer": "^9.11.8",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -24,6 +25,7 @@
     "prisma": "^6.9.0",
     "socket.io": "^4.8.1",
     "sodium-plus": "^0.9.0",
+    "uuid": "^11.1.0",
     "web-push": "^3.6.7",
     "zod": "^3.25.56"
   },

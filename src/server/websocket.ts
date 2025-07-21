@@ -248,8 +248,14 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
             }
         });
-        socket.on('disconnect', (reason) => {
-            console.log(`[WS] Desconexión: ${socket.id} | Razón: ${reason}`);
+        socket.on('disconnect', async () => {
+            const userId = socket.data.userId;
+            if (userId) {
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: { lastSeen: new Date() }
+                });
+            }
         });
     });
 

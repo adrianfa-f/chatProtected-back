@@ -1,6 +1,6 @@
 -verificar si hay que ocultar los salt del hasheo en el .env
--El userName se ve en network deberia ser encriptado tambien.
--No deberia poder enviarme una sugerencia de chat a mi mismo.
+-Bloquear ip cuando se ejecute limite de peticiones.
+
 
 
 
