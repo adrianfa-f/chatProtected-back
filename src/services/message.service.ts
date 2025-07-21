@@ -60,8 +60,8 @@ export default {
         return prisma.message.findMany({
             where: {
                 chatId,
-                receiverId,
-                createdAt: { gt: receiver?.lastSeen || new Date(0) }
+                /*                 receiverId,
+                                createdAt: { gt: receiver?.lastSeen || new Date(0) } */
             },
             orderBy: { createdAt: 'asc' }
         });
