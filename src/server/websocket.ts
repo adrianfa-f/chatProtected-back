@@ -164,10 +164,15 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('webrtc-ice-candidate', { candidate });
         });
 
-        socket.on('incoming-call', ({ to }) => {
+        socket.on('incoming-call', async ({ to }) => {
+            const caller = await prisma.user.findUnique({
+                where: { id: socket.data.userId },
+                select: { username: true }
+            });
+
             io.to(to).emit('incoming-call', {
                 from: socket.data.userId,
-                username: "Nombre del remitente" // Debes obtener esto de la DB
+                username: caller?.username || "Usuario desconocido"
             });
         });
 
@@ -294,6 +299,7 @@ export const setupWebSocket = (server: HttpServer) => {
                     }
                 });
             }
+            io.emit('call-ended', { userId: socket.data.userId });
         });
     });
 
