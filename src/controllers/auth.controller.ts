@@ -18,7 +18,7 @@ export const register = async (req: Request, res: Response) => {
             secure: true,
             /* secure: process.env.NODE_ENV === 'production', */
             sameSite: 'none',
-            maxAge: 24 * 60 * 60 * 1000, // 1 día
+            maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
             path: '/',
         });
 
@@ -51,7 +51,7 @@ export const login = async (req: Request, res: Response) => {
             secure: true,
             /* secure: process.env.NODE_ENV === 'production', */
             sameSite: 'none',
-            maxAge: 24 * 60 * 60 * 1000, // 1 día
+            maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
             path: '/',
         });
 

@@ -24,18 +24,26 @@ export const setupWebSocket = (server: HttpServer) => {
         cookie: false
     });
 
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
         // Obtener userId de la query
         const userId = socket.handshake.query.userId;
         if (userId && typeof userId === 'string') {
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    online: false
+                }
+            });
+
             console.log(`[WS] Usuario conectado: ${userId}`);
             socket.data.userId = userId;
             if (userId) socket.join(userId);
         } else {
             console.warn('[WS] Conexión sin userId');
         }
+
 
         socket.on('send-chat-request', async (toUserId: string) => {
             const fromUserId = socket.data.userId;
@@ -142,6 +150,18 @@ export const setupWebSocket = (server: HttpServer) => {
                 console.error('[WS] Error al aceptar solicitud de chat:', error);
                 socket.emit('chat-accept-error', { message: 'Ocurrió un error al aceptar la solicitud.' });
             }
+        });
+
+        socket.on('webrtc-offer', ({ to, offer }) => {
+            io.to(to).emit('webrtc-offer', { from: socket.id, offer });
+        });
+
+        socket.on('webrtc-answer', ({ to, answer }) => {
+            io.to(to).emit('webrtc-answer', { answer });
+        });
+
+        socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
+            io.to(to).emit('webrtc-ice-candidate', { candidate });
         });
 
         socket.on('join-chat', (chatId: string) => {
@@ -253,7 +273,10 @@ export const setupWebSocket = (server: HttpServer) => {
             if (userId) {
                 await prisma.user.update({
                     where: { id: userId },
-                    data: { lastSeen: new Date() }
+                    data: {
+                        lastSeen: new Date(),
+                        online: false
+                    }
                 });
             }
         });
