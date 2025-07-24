@@ -164,6 +164,21 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('webrtc-ice-candidate', { candidate });
         });
 
+        socket.on('incoming-call', ({ to }) => {
+            io.to(to).emit('incoming-call', {
+                from: socket.data.userId,
+                username: "Nombre del remitente" // Debes obtener esto de la DB
+            });
+        });
+
+        socket.on('call-accepted', ({ to }) => {
+            io.to(to).emit('call-accepted');
+        });
+
+        socket.on('call-ended', ({ to }) => {
+            io.to(to).emit('call-ended');
+        });
+
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
                 console.warn('[WS] Intento de unirse sin userId');
