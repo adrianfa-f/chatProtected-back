@@ -153,25 +153,28 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('webrtc-offer', ({ to, offer }) => {
-            io.to(to).emit('webrtc-offer', { from: socket.id, offer });
+            // Agregar información del remitente
+            io.to(to).emit('webrtc-offer', {
+                from: socket.data.userId,
+                offer
+            });
         });
 
         socket.on('webrtc-answer', ({ to, answer }) => {
-            // Añadir el campo 'from' con el ID del remitente
             io.to(to).emit('webrtc-answer', {
                 answer,
-                from: socket.data.userId  // ← Esto es nuevo
+                from: socket.data.userId  // Identificar quién envía la respuesta
             });
         });
 
         socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
-            // Añadir el campo 'from' con el ID del remitente
             io.to(to).emit('webrtc-ice-candidate', {
                 candidate,
-                from: socket.data.userId  // ← Esto es nuevo
+                from: socket.data.userId  // Identificar origen del candidato
             });
         });
 
+        // Corregir evento incoming-call para enviar ID correcto
         socket.on('incoming-call', async ({ to }) => {
             const caller = await prisma.user.findUnique({
                 where: { id: socket.data.userId },
@@ -179,7 +182,7 @@ export const setupWebSocket = (server: HttpServer) => {
             });
 
             io.to(to).emit('incoming-call', {
-                from: socket.data.userId,
+                from: socket.data.userId,  // Usar ID real, no socket.id
                 username: caller?.username || "Usuario desconocido"
             });
         });
