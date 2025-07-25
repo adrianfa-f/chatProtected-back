@@ -24,6 +24,8 @@ export const setupWebSocket = (server: HttpServer) => {
         cookie: false
     });
 
+    const activeCalls = new Map();
+
     io.on('connection', async (socket) => {
         console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
@@ -152,47 +154,63 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('webrtc-offer', ({ to, offer }) => {
-            // Agregar información del remitente
-            io.to(to).emit('webrtc-offer', {
-                from: socket.data.userId,
-                offer
-            });
-        });
-
-        socket.on('webrtc-answer', ({ to, answer }) => {
-            io.to(to).emit('webrtc-answer', {
-                answer,
-                from: socket.data.userId  // Identificar quién envía la respuesta
-            });
-        });
-
-        socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
-            io.to(to).emit('webrtc-ice-candidate', {
-                candidate,
-                from: socket.data.userId  // Identificar origen del candidato
-            });
-        });
-
-        // Corregir evento incoming-call para enviar ID correcto
         socket.on('incoming-call', async ({ to }) => {
+            // Evitar llamadas duplicadas
+            if (activeCalls.has(to)) {
+                console.warn(`[WS] Llamada duplicada ignorada para ${to}`);
+                return;
+            }
+            activeCalls.set(to, socket.data.userId);
+
+            // Obtener nombre del llamador
             const caller = await prisma.user.findUnique({
                 where: { id: socket.data.userId },
                 select: { username: true }
             });
 
             io.to(to).emit('incoming-call', {
-                from: socket.data.userId,  // Usar ID real, no socket.id
+                from: socket.data.userId,
                 username: caller?.username || "Usuario desconocido"
             });
         });
 
+        // Evento para aceptar llamada
         socket.on('call-accepted', ({ to }) => {
             io.to(to).emit('call-accepted');
+
+            // Enviar evento para proceder con WebRTC después de aceptar
+            setTimeout(() => {
+                io.to(to).emit('proceed-with-webrtc');
+            }, 100);
         });
 
+        // Evento para finalizar llamada
         socket.on('call-ended', ({ to }) => {
+            activeCalls.delete(to);
             io.to(to).emit('call-ended');
+        });
+
+        // Eventos WebRTC
+        socket.on('webrtc-offer', ({ to, offer, iceRestart }) => {
+            io.to(to).emit('webrtc-offer', {
+                from: socket.data.userId,
+                offer,
+                iceRestart: iceRestart || false
+            });
+        });
+
+        socket.on('webrtc-answer', ({ to, answer }) => {
+            io.to(to).emit('webrtc-answer', {
+                answer,
+                from: socket.data.userId
+            });
+        });
+
+        socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
+            io.to(to).emit('webrtc-ice-candidate', {
+                candidate,
+                from: socket.data.userId
+            });
         });
 
         socket.on('join-chat', (chatId: string) => {
@@ -309,8 +327,13 @@ export const setupWebSocket = (server: HttpServer) => {
                         online: false
                     }
                 });
+                if (activeCalls.has(userId)) {
+                    const to = activeCalls.get(userId);
+                    io.to(to).emit('call-ended');
+                    activeCalls.delete(userId);
+                    console.log(`[WS] Llamada terminada por desconexión de ${userId}`);
+                }
             }
-            io.emit('call-ended', { userId: socket.data.userId });
         });
     });
 
