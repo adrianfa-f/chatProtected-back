@@ -317,9 +317,39 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
             }
         });
+        // Manejar desconexión de usuario
         socket.on('disconnect', async () => {
             const userId = socket.data.userId;
             if (userId) {
+                console.log(`[WS] Usuario desconectado: ${userId}`);
+
+                // 1. Notificar a todos los pares en salas compartidas
+                const rooms = Array.from(socket.rooms);
+                rooms.forEach(room => {
+                    if (room !== socket.id) { // Excluir la sala personal
+                        socket.to(room).emit('peer-disconnected', { userId });
+                    }
+                });
+
+                // 2. Terminar llamadas activas
+                // Si el usuario estaba en una llamada entrante
+                if (activeCalls.has(userId)) {
+                    const callerId = activeCalls.get(userId);
+                    activeCalls.delete(userId);
+                    io.to(callerId).emit('call-ended');
+                    console.log(`[WS] Llamada terminada por desconexión de receptor: ${userId}`);
+                }
+
+                // Si el usuario había iniciado una llamada
+                for (const [receiverId, callerId] of activeCalls.entries()) {
+                    if (callerId === userId) {
+                        activeCalls.delete(receiverId);
+                        io.to(receiverId).emit('call-ended');
+                        console.log(`[WS] Llamada terminada por desconexión de emisor: ${userId}`);
+                    }
+                }
+
+                // 3. Actualizar estado en base de datos
                 await prisma.user.update({
                     where: { id: userId },
                     data: {
@@ -327,13 +357,16 @@ export const setupWebSocket = (server: HttpServer) => {
                         online: false
                     }
                 });
-                if (activeCalls.has(userId)) {
-                    const to = activeCalls.get(userId);
-                    io.to(to).emit('call-ended');
-                    activeCalls.delete(userId);
-                    console.log(`[WS] Llamada terminada por desconexión de ${userId}`);
-                }
+
+                console.log(`[WS] Estado actualizado para usuario desconectado: ${userId}`);
             }
+        });
+
+        // Manejar evento de peer desconectado
+        socket.on('peer-disconnected', ({ userId }) => {
+            console.log(`[WS] Peer desconectado recibido: ${userId}`);
+            // Este evento se recibe cuando un peer se desconecta
+            // El frontend manejará la terminación de la llamada
         });
     });
 
