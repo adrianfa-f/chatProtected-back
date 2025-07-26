@@ -192,6 +192,8 @@ export const setupWebSocket = (server: HttpServer) => {
 
         // Eventos WebRTC
         socket.on('webrtc-offer', ({ to, offer, iceRestart }) => {
+            io.to(to).emit('webrtc-renegotiate', { from: socket.data.userId });
+
             io.to(to).emit('webrtc-offer', {
                 from: socket.data.userId,
                 offer,
