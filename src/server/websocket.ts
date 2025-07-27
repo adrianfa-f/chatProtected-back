@@ -154,64 +154,16 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('incoming-call', async ({ to }) => {
-            // Evitar llamadas duplicadas
-            if (activeCalls.has(to)) {
-                console.warn(`[WS] Llamada duplicada ignorada para ${to}`);
-                return;
-            }
-            activeCalls.set(to, socket.data.userId);
-
-            // Obtener nombre del llamador
-            const caller = await prisma.user.findUnique({
-                where: { id: socket.data.userId },
-                select: { username: true }
-            });
-
-            io.to(to).emit('incoming-call', {
-                from: socket.data.userId,
-                username: caller?.username || "Usuario desconocido"
-            });
+        socket.on('call:offer', ({ to, sdp }) => {
+            socket.to(to).emit('call:offer', { from: socket.id, sdp });
         });
 
-        // Evento para aceptar llamada
-        socket.on('call-accepted', ({ to }) => {
-            io.to(to).emit('call-accepted');
-
-            // Enviar evento para proceder con WebRTC después de aceptar
-            setTimeout(() => {
-                io.to(to).emit('proceed-with-webrtc');
-            }, 100);
+        socket.on('call:answer', ({ to, sdp }) => {
+            socket.to(to).emit('call:answer', { from: socket.id, sdp });
         });
 
-        // Evento para finalizar llamada
-        socket.on('call-ended', ({ to }) => {
-            activeCalls.delete(to);
-            io.to(to).emit('call-ended');
-        });
-
-        // Eventos WebRTC
-        socket.on('webrtc-offer', ({ to, offer, iceRestart }) => {
-
-            io.to(to).emit('webrtc-offer', {
-                from: socket.data.userId,
-                offer,
-                iceRestart: iceRestart || false
-            });
-        });
-
-        socket.on('webrtc-answer', ({ to, answer }) => {
-            io.to(to).emit('webrtc-answer', {
-                answer,
-                from: socket.data.userId
-            });
-        });
-
-        socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
-            io.to(to).emit('webrtc-ice-candidate', {
-                candidate,
-                from: socket.data.userId
-            });
+        socket.on('call:ice-candidate', ({ to, candidate }) => {
+            socket.to(to).emit('call:ice-candidate', { from: socket.id, candidate });
         });
 
         socket.on('join-chat', (chatId: string) => {
@@ -323,32 +275,6 @@ export const setupWebSocket = (server: HttpServer) => {
             const userId = socket.data.userId;
             if (userId) {
                 console.log(`[WS] Usuario desconectado: ${userId}`);
-
-                // 1. Notificar a todos los pares en salas compartidas
-                const rooms = Array.from(socket.rooms);
-                rooms.forEach(room => {
-                    if (room !== socket.id) { // Excluir la sala personal
-                        socket.to(room).emit('peer-disconnected', { userId });
-                    }
-                });
-
-                // 2. Terminar llamadas activas
-                // Si el usuario estaba en una llamada entrante
-                if (activeCalls.has(userId)) {
-                    const callerId = activeCalls.get(userId);
-                    activeCalls.delete(userId);
-                    io.to(callerId).emit('call-ended');
-                    console.log(`[WS] Llamada terminada por desconexión de receptor: ${userId}`);
-                }
-
-                // Si el usuario había iniciado una llamada
-                for (const [receiverId, callerId] of activeCalls.entries()) {
-                    if (callerId === userId) {
-                        activeCalls.delete(receiverId);
-                        io.to(receiverId).emit('call-ended');
-                        console.log(`[WS] Llamada terminada por desconexión de emisor: ${userId}`);
-                    }
-                }
 
                 // 3. Actualizar estado en base de datos
                 await prisma.user.update({
