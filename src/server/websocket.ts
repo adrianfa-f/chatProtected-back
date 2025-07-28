@@ -158,34 +158,24 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('call:offer', ({ to, sdp }) => {
-            const targetSocketId = userSocketMap.get(to);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('call:offer', {
-                    from: socket.data.userId, // Enviar userId, no socket.id
-                    sdp
-                });
-            }
+        // Cuando A llama a B
+        socket.on('call-user', ({ from, to, sdp }) => {
+            io.to(to).emit('incoming-call', { from, sdp });
         });
 
-        socket.on('call:answer', ({ to, sdp }) => {
-            const targetSocketId = userSocketMap.get(to);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('call:answer', {
-                    from: socket.data.userId,
-                    sdp
-                });
-            }
+        // Cuando B responde a A
+        socket.on('answer-call', ({ from, to, sdp }) => {
+            io.to(to).emit('call-answered', { from, sdp });
         });
 
-        socket.on('call:ice-candidate', ({ to, candidate }) => {
-            const targetSocketId = userSocketMap.get(to);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('call:ice-candidate', {
-                    from: socket.data.userId,
-                    candidate
-                });
-            }
+        // Intercambio de candidatos ICE
+        socket.on('ice-candidate', ({ from, to, candidate }) => {
+            io.to(to).emit('ice-candidate', { from, candidate });
+        });
+
+        // Finalizar llamada
+        socket.on('end-call', ({ from, to }) => {
+            io.to(to).emit('call-ended', { from });
         });
 
 
