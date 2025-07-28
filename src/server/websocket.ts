@@ -24,13 +24,14 @@ export const setupWebSocket = (server: HttpServer) => {
         cookie: false
     });
 
-    const activeCalls = new Map();
+    const userSocketMap = new Map<string, string>();
 
     io.on('connection', async (socket) => {
         console.log(`[WS][${new Date().toISOString()}] Conexión: ${socket.id} | IP: ${socket.handshake.address}`);
 
         // Obtener userId de la query
         const userId = socket.handshake.query.userId;
+
         if (userId && typeof userId === 'string') {
             await prisma.user.update({
                 where: { id: userId },
@@ -39,13 +40,14 @@ export const setupWebSocket = (server: HttpServer) => {
                 }
             });
 
+            userSocketMap.set(userId, socket.id);
+
             console.log(`[WS] Usuario conectado: ${userId}`);
             socket.data.userId = userId;
             if (userId) socket.join(userId);
         } else {
             console.warn('[WS] Conexión sin userId');
         }
-
 
         socket.on('send-chat-request', async (toUserId: string) => {
             const fromUserId = socket.data.userId;
@@ -155,7 +157,10 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call:offer', ({ to, sdp }) => {
-            socket.to(to).emit('call:offer', { from: socket.id, sdp });
+            const targetSocketId = userSocketMap.get(to);
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('call:offer', { from: socket.id, sdp });
+            }
         });
 
         socket.on('call:answer', ({ to, sdp }) => {
