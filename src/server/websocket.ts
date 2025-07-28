@@ -32,6 +32,7 @@ export const setupWebSocket = (server: HttpServer) => {
         // Obtener userId de la query
         const userId = socket.handshake.query.userId;
 
+
         if (userId && typeof userId === 'string') {
             await prisma.user.update({
                 where: { id: userId },
@@ -41,6 +42,7 @@ export const setupWebSocket = (server: HttpServer) => {
             });
 
             userSocketMap.set(userId, socket.id);
+            socket.data.userId = userId;
 
             console.log(`[WS] Usuario conectado: ${userId}`);
             socket.data.userId = userId;
@@ -159,17 +161,33 @@ export const setupWebSocket = (server: HttpServer) => {
         socket.on('call:offer', ({ to, sdp }) => {
             const targetSocketId = userSocketMap.get(to);
             if (targetSocketId) {
-                io.to(targetSocketId).emit('call:offer', { from: socket.id, sdp });
+                io.to(targetSocketId).emit('call:offer', {
+                    from: socket.data.userId, // Enviar userId, no socket.id
+                    sdp
+                });
             }
         });
 
         socket.on('call:answer', ({ to, sdp }) => {
-            socket.to(to).emit('call:answer', { from: socket.id, sdp });
+            const targetSocketId = userSocketMap.get(to);
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('call:answer', {
+                    from: socket.data.userId,
+                    sdp
+                });
+            }
         });
 
         socket.on('call:ice-candidate', ({ to, candidate }) => {
-            socket.to(to).emit('call:ice-candidate', { from: socket.id, candidate });
+            const targetSocketId = userSocketMap.get(to);
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('call:ice-candidate', {
+                    from: socket.data.userId,
+                    candidate
+                });
+            }
         });
+
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
