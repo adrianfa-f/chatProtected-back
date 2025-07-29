@@ -158,26 +158,40 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        // Cuando A llama a B
-        socket.on('call-user', ({ from, to, sdp }) => {
-            io.to(to).emit('incoming-call', { from, sdp });
-        });
+        // 🚀 Solicitud de llamada
+        socket.on('call-request', ({ callId, from, to }) => {
+            io.to(to).emit('call-request', { callId, from, to })
+        })
 
-        // Cuando B responde a A
-        socket.on('answer-call', ({ from, to, sdp }) => {
-            io.to(to).emit('call-answered', { from, sdp });
-        });
+        // ❌ Cancelación antes de que respondan
+        socket.on('call-cancel', ({ callId, from, to }) => {
+            io.to(to).emit('call-cancel', { callId })
+        })
 
-        // Intercambio de candidatos ICE
-        socket.on('ice-candidate', ({ from, to, candidate }) => {
-            io.to(to).emit('ice-candidate', { from, candidate });
-        });
+        // ❎ Rechazo explícito
+        socket.on('call-decline', ({ callId, from, to }) => {
+            io.to(to).emit('call-decline', { callId })
+        })
 
-        // Finalizar llamada
-        socket.on('end-call', ({ from, to }) => {
-            io.to(to).emit('call-ended', { from });
-        });
+        // ✅ Aceptación de llamada
+        socket.on('call-accept', ({ callId, from, to }) => {
+            io.to(to).emit('call-accept', { callId })
+        })
 
+        // 📨 Oferta y respuesta SDP
+        socket.on('call-sdp', ({ callId, sdp, type, to }) => {
+            io.to(to).emit('call-sdp', { callId, sdp, type }) // type: 'offer' | 'answer'
+        })
+
+        // ❄️ ICE candidates
+        socket.on('ice-candidate', ({ callId, candidate, to }) => {
+            io.to(to).emit('ice-candidate', { callId, candidate })
+        })
+
+        // 🔚 Finalización de llamada
+        socket.on('call-end', ({ callId, from, to }) => {
+            io.to(to).emit('call-end', { callId })
+        })
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
