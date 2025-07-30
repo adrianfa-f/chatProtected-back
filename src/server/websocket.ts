@@ -158,40 +158,34 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        // 🚀 Solicitud de llamada
+        // Backend (Socket.IO)
         socket.on('call-request', ({ callId, from, to }) => {
             io.to(to).emit('call-request', { callId, from, to })
-        })
+        });
 
-        // ❌ Cancelación antes de que respondan
         socket.on('call-cancel', ({ callId, from, to }) => {
             io.to(to).emit('call-cancel', { callId })
-        })
+        });
 
-        // ❎ Rechazo explícito
         socket.on('call-decline', ({ callId, from, to }) => {
             io.to(to).emit('call-decline', { callId })
-        })
+        });
 
-        // ✅ Aceptación de llamada
         socket.on('call-accept', ({ callId, from, to }) => {
             io.to(to).emit('call-accept', { callId })
-        })
+        });
 
-        // 📨 Oferta y respuesta SDP
         socket.on('call-sdp', ({ callId, sdp, type, to }) => {
-            io.to(to).emit('call-sdp', { callId, sdp, type }) // type: 'offer' | 'answer'
-        })
+            io.to(to).emit('call-sdp', { callId, sdp, type })
+        });
 
-        // ❄️ ICE candidates
         socket.on('ice-candidate', ({ callId, candidate, to }) => {
             io.to(to).emit('ice-candidate', { callId, candidate })
-        })
+        });
 
-        // 🔚 Finalización de llamada
         socket.on('call-end', ({ callId, from, to }) => {
             io.to(to).emit('call-end', { callId })
-        })
+        });
 
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
