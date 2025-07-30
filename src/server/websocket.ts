@@ -159,27 +159,27 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call-request', ({ from, to }) => {
-            io.to(to).emit('call-request', { from });
+            io.to(to).emit('call-request', { from })
+        })
+
+        // Cuando A llama a B
+        socket.on('call-user', ({ from, to, sdp }) => {
+            io.to(to).emit('incoming-call', { from, sdp });
         });
 
-        socket.on('call-start', ({ from, to, sdp }) => {
-            io.to(to).emit('call-start', { from, sdp });
-        });
-
-        socket.on('call-answer', ({ from, to, sdp }) => {
+        // Cuando B responde a A
+        socket.on('answer-call', ({ from, to, sdp }) => {
             io.to(to).emit('call-answered', { from, sdp });
         });
 
+        // Intercambio de candidatos ICE
         socket.on('ice-candidate', ({ from, to, candidate }) => {
             io.to(to).emit('ice-candidate', { from, candidate });
         });
 
+        // Finalizar llamada
         socket.on('end-call', ({ from, to }) => {
             io.to(to).emit('call-ended', { from });
-        });
-
-        socket.on('decline-call', ({ from, to }) => {
-            io.to(to).emit('call-declined', { from });
         });
 
         socket.on('join-chat', (chatId: string) => {
