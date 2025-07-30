@@ -158,33 +158,28 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        // Backend (Socket.IO)
-        socket.on('call-request', ({ callId, from, to }) => {
-            io.to(to).emit('call-request', { callId, from, to })
+        socket.on('call-request', ({ from, to }) => {
+            io.to(to).emit('call-request', { from });
         });
 
-        socket.on('call-cancel', ({ callId, from, to }) => {
-            io.to(to).emit('call-cancel', { callId })
+        socket.on('call-start', ({ from, to, sdp }) => {
+            io.to(to).emit('call-start', { from, sdp });
         });
 
-        socket.on('call-decline', ({ callId, from, to }) => {
-            io.to(to).emit('call-decline', { callId })
+        socket.on('call-answer', ({ from, to, sdp }) => {
+            io.to(to).emit('call-answered', { from, sdp });
         });
 
-        socket.on('call-accept', ({ callId, from, to }) => {
-            io.to(to).emit('call-accept', { callId })
+        socket.on('ice-candidate', ({ from, to, candidate }) => {
+            io.to(to).emit('ice-candidate', { from, candidate });
         });
 
-        socket.on('call-sdp', ({ callId, sdp, type, to }) => {
-            io.to(to).emit('call-sdp', { callId, sdp, type })
+        socket.on('end-call', ({ from, to }) => {
+            io.to(to).emit('call-ended', { from });
         });
 
-        socket.on('ice-candidate', ({ callId, candidate, to }) => {
-            io.to(to).emit('ice-candidate', { callId, candidate })
-        });
-
-        socket.on('call-end', ({ callId, from, to }) => {
-            io.to(to).emit('call-end', { callId })
+        socket.on('decline-call', ({ from, to }) => {
+            io.to(to).emit('call-declined', { from });
         });
 
         socket.on('join-chat', (chatId: string) => {
