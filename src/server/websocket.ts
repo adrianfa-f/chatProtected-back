@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
 import messageService from '../services/message.service';
-import { sendPushNotification } from '../services/notificationService';
+import { sendCallNotification, sendPushNotification } from '../services/notificationService';
 
 
 const prisma = new PrismaClient();
@@ -158,8 +158,18 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('call-request', ({ from, to, userName }) => {
-            io.to(to).emit('call-request', { from, userName })
+        socket.on('call-request', async ({ from, to, userName, chatId }) => {
+            const isRecipientOnline = userSocketMap.has(to);
+            if (isRecipientOnline) {
+                io.to(to).emit('call-request', { from, userName })
+            } else {
+                try {
+                    await sendCallNotification(to, from, userName, chatId);
+                } catch (error) {
+                    console.error('Error enviando notificación de llamada:', error);
+                }
+            }
+
         })
 
         // Cuando A llama a B

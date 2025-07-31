@@ -92,3 +92,45 @@ export async function sendPushNotification(userId: string, message: string, chat
         }
     }
 }
+
+export async function sendCallNotification(
+    userId: string,
+    callerId: string,
+    callerName: string,
+    chatId: string
+) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { pushSubscription: true }
+    });
+
+    const subscriptionData = user?.pushSubscription as unknown as PushSubscriptionData | null;
+    if (!subscriptionData) return;
+
+    const subscription: PushSubscription = {
+        endpoint: subscriptionData.endpoint,
+        expirationTime: null,
+        keys: {
+            auth: subscriptionData.keys.auth,
+            p256dh: subscriptionData.keys.p256dh
+        }
+    };
+
+    // Payload especial para llamadas
+    const payload = JSON.stringify({
+        title: 'Llamada entrante',
+        data: {
+            type: 'incoming-call',
+            from: callerId,
+            username: callerName,
+            chatId: chatId
+        }
+    });
+
+    try {
+        await webPush.sendNotification(subscription, payload);
+        console.log(`[Push] Notificación de llamada enviada a ${userId}`);
+    } catch (error: any) {
+        console.log("Error al enviar la notificacion de llamada: ", error)
+    }
+}
