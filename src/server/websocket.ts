@@ -158,8 +158,8 @@ export const setupWebSocket = (server: HttpServer) => {
             }
         });
 
-        socket.on('call-request', ({ from, to }) => {
-            io.to(to).emit('call-request', { from })
+        socket.on('call-request', ({ from, to, userName }) => {
+            io.to(to).emit('call-request', { from, userName })
         })
 
         // Cuando A llama a B
