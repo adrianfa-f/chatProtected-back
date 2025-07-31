@@ -182,6 +182,14 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('call-ended', { from });
         });
 
+        socket.on('decline-call', ({ to }) => {
+            io.to(to).emit('declined-call')
+        })
+
+        socket.on('cancel-call', ({ to }) => {
+            io.to(to).emit('canceled-call')
+        })
+
         socket.on('join-chat', (chatId: string) => {
             if (!socket.data.userId) {
                 console.warn('[WS] Intento de unirse sin userId');
