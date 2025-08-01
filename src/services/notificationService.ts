@@ -119,10 +119,11 @@ export async function sendCallNotification(
     // Payload especial para llamadas
     const payload = JSON.stringify({
         title: 'Llamada entrante',
+        body: callerName,
+        icon: "/icon-call.png",
         data: {
             type: 'incoming-call',
             from: callerId,
-            username: callerName,
             chatId: chatId
         }
     });

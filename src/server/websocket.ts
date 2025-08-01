@@ -164,7 +164,15 @@ export const setupWebSocket = (server: HttpServer) => {
                 io.to(to).emit('call-request', { from, userName })
             } else {
                 try {
-                    await sendCallNotification(to, from, userName, chatId);
+                    const receiverUser = await prisma.user.findUnique({
+                        where: { id: to },
+                        select: { pushSubscription: true }
+                    });
+
+                    if (receiverUser && receiverUser.pushSubscription) {
+                        await sendCallNotification(to, from, userName, chatId);
+                    }
+
                 } catch (error) {
                     console.error('Error enviando notificación de llamada:', error);
                 }
