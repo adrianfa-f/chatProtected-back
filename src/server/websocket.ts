@@ -166,7 +166,6 @@ export const setupWebSocket = (server: HttpServer) => {
                 io.to(to).emit('call-request', { from, userName })
             } else {
                 try {
-                    console.log("Preparamos la notificacion a: ", to)
                     const receiverUser = await prisma.user.findUnique({
                         where: { id: to },
                         select: { pushSubscription: true }
@@ -332,6 +331,7 @@ export const setupWebSocket = (server: HttpServer) => {
                     }
                 });
 
+                socket.leave(userId)
                 console.log(`[WS] Estado actualizado para usuario desconectado: ${userId}`);
             }
         });
