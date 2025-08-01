@@ -331,6 +331,7 @@ export const setupWebSocket = (server: HttpServer) => {
                     }
                 });
 
+                userSocketMap.delete(userId);
                 socket.leave(userId)
                 console.log(`[WS] Estado actualizado para usuario desconectado: ${userId}`);
             }
