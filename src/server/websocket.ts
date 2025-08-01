@@ -159,11 +159,14 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call-request', async ({ from, to, userName, chatId }) => {
+            console.log("Peticion de llamda")
             const isRecipientOnline = userSocketMap.has(to);
+            console.log("Esta el usuario en linea: ", isRecipientOnline)
             if (isRecipientOnline) {
                 io.to(to).emit('call-request', { from, userName })
             } else {
                 try {
+                    console.log("Preparamos la notificacion a: ", to)
                     const receiverUser = await prisma.user.findUnique({
                         where: { id: to },
                         select: { pushSubscription: true }
