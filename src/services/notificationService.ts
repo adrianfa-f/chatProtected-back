@@ -103,6 +103,7 @@ export async function sendCallNotification(
         where: { id: userId },
         select: { pushSubscription: true }
     });
+    console.log("Sunbscription obtenida: ", user)
 
     const subscriptionData = user?.pushSubscription as unknown as PushSubscriptionData | null;
     if (!subscriptionData) return;
@@ -127,8 +128,10 @@ export async function sendCallNotification(
             chatId: chatId
         }
     });
+    console.log("Payload establecido: ", payload)
 
     try {
+        console.log("Intentando enviar la notificacion a: ", userId)
         await webPush.sendNotification(subscription, payload);
         console.log(`[Push] Notificación de llamada enviada a ${userId}`);
     } catch (error: any) {

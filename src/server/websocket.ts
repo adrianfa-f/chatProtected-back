@@ -170,7 +170,9 @@ export const setupWebSocket = (server: HttpServer) => {
                     });
 
                     if (receiverUser && receiverUser.pushSubscription) {
+                        console.log("Ejecutando funcion para enviar Notificacion de llamada")
                         await sendCallNotification(to, from, userName, chatId);
+                        console.log("Funcion ejecutada")
                     }
 
                 } catch (error) {
