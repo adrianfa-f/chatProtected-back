@@ -125,7 +125,8 @@ export async function sendCallNotification(
         data: {
             type: 'incoming-call',
             from: callerId,
-            chatId: chatId
+            chatId: chatId,
+            url: `${process.env.FRONTEND_URL}`
         }
     });
     console.log("Payload establecido: ", payload)
