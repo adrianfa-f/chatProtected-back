@@ -159,9 +159,7 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call-request', async ({ from, to, userName, chatId }) => {
-            console.log("Peticion de llamda")
             const isRecipientOnline = userSocketMap.has(to);
-            console.log("Esta el usuario en linea: ", isRecipientOnline)
             if (isRecipientOnline) {
                 io.to(to).emit('call-request', { from, userName })
             } else {
@@ -172,9 +170,7 @@ export const setupWebSocket = (server: HttpServer) => {
                     });
 
                     if (receiverUser && receiverUser.pushSubscription) {
-                        console.log("Ejecutando funcion para enviar Notificacion de llamada")
-                        await sendCallNotification(to, from, userName, chatId);
-                        console.log("Funcion ejecutada")
+                        await sendCallNotification(to, from, userName, chatId, 'incoming-call');
                     }
 
                 } catch (error) {
@@ -208,8 +204,25 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('declined-call')
         })
 
-        socket.on('cancel-call', ({ to }) => {
-            io.to(to).emit('canceled-call')
+        socket.on('cancel-call', async ({ from, to, userName, chatId }) => {
+            const isRecipientOnline = userSocketMap.has(to);
+            if (isRecipientOnline) {
+                io.to(to).emit('canceled-call');
+            } else {
+                try {
+                    const receiverUser = await prisma.user.findUnique({
+                        where: { id: to },
+                        select: { pushSubscription: true }
+                    });
+
+                    if (receiverUser && receiverUser.pushSubscription) {
+                        await sendCallNotification(to, from, userName, chatId, 'cancel-call');
+                    }
+
+                } catch (error) {
+                    console.error('Error enviando notificación de llamada:', error);
+                }
+            }
         })
 
         socket.on('join-chat', (chatId: string) => {

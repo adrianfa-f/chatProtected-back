@@ -65,6 +65,7 @@ export async function sendPushNotification(userId: string, message: string, chat
     const payload = JSON.stringify({
         title: senderName,
         body: message,
+        tag: `message-${senderName}`,
         icon: '/icon-192x192.png',
         data: {
             url: `${process.env.FRONTEND_URL}/chat/${chatId}`,
@@ -97,7 +98,8 @@ export async function sendCallNotification(
     userId: string,
     callerId: string,
     callerName: string,
-    chatId: string
+    chatId: string,
+    type: string
 ) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -121,9 +123,10 @@ export async function sendCallNotification(
     const payload = JSON.stringify({
         title: 'Llamada entrante',
         body: callerName,
+        tag: `call-${callerName}`,
         icon: "/icon-call.png",
         data: {
-            type: 'incoming-call',
+            type: type,
             from: callerId,
             chatId: chatId,
             url: `${process.env.FRONTEND_URL}`
