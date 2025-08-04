@@ -329,6 +329,17 @@ export const setupWebSocket = (server: HttpServer) => {
                 });
             }
         });
+
+        socket.on('manual-disconnect', ({ userId }) => {
+            userSocketMap.delete(userId);
+            console.log(`Usuario ${userId} marcado como desconectado`);
+        });
+
+        socket.on('manual-reconnect', ({ userId }) => {
+            userSocketMap.set(userId, socket.id);
+            console.log(`Usuario ${userId} marcado como reconectado`);
+        });
+
         // Manejar desconexión de usuario
         socket.on('disconnect', async () => {
             const userId = socket.data.userId;
