@@ -159,7 +159,7 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call-request', async ({ from, to, userName, chatId }) => {
-            const isRecipientOnline = userSocketMap.has(to);
+            /* const isRecipientOnline = userSocketMap.has(to);
             if (isRecipientOnline) {
                 io.to(to).emit('call-request', { from, userName })
             } else {
@@ -176,7 +176,9 @@ export const setupWebSocket = (server: HttpServer) => {
                 } catch (error) {
                     console.error('Error enviando notificación de llamada:', error);
                 }
-            }
+            } */
+            io.to(to).emit('call-request', { from, userName })
+            await sendCallNotification(to, from, userName, chatId, 'incoming-call');
 
         })
 
@@ -205,7 +207,7 @@ export const setupWebSocket = (server: HttpServer) => {
         })
 
         socket.on('cancel-call', async ({ from, to, userName, chatId }) => {
-            const isRecipientOnline = userSocketMap.has(to);
+            /* const isRecipientOnline = userSocketMap.has(to);
             if (isRecipientOnline) {
                 io.to(to).emit('canceled-call');
             } else {
@@ -222,7 +224,9 @@ export const setupWebSocket = (server: HttpServer) => {
                 } catch (error) {
                     console.error('Error enviando notificación de llamada:', error);
                 }
-            }
+            } */
+            io.to(to).emit('canceled-call');
+            await sendCallNotification(to, from, userName, chatId, 'cancel-call');
         })
 
         socket.on('join-chat', (chatId: string) => {
