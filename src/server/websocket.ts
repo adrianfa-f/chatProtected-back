@@ -192,7 +192,11 @@ export const setupWebSocket = (server: HttpServer) => {
         socket.on('answer-call', async ({ from, to, sdp }) => {
             io.to(to).emit('call-answered', { from, sdp });
             const startedAt = new Date().toISOString();
-            await callService.createCall(from, to, 'answered', new Date(startedAt));
+            try {
+                await callService.createCall(from, to, 'answered', new Date(startedAt));
+            } catch (err) {
+                console.log("Error al registrar la llamada iniciada: ", err)
+            }
         });
 
         // Intercambio de candidatos ICE
@@ -204,20 +208,29 @@ export const setupWebSocket = (server: HttpServer) => {
         socket.on('end-call', async ({ from, to }) => {
             io.to(to).emit('call-ended', { from });
             const endedAt = new Date().toISOString();
-            await prisma.call.updateMany({
-                where: {
-                    status: 'answered',
-                    endedAt: null
-                },
-                data: {
-                    endedAt: new Date(endedAt)
-                }
-            });
+            try {
+                await prisma.call.updateMany({
+                    where: {
+                        status: 'answered',
+                        endedAt: null
+                    },
+                    data: {
+                        endedAt: new Date(endedAt)
+                    }
+                });
+            } catch (err) {
+                console.log("Error al actualizar la llamada finalizada: ", err)
+            }
         });
 
         socket.on('decline-call', async ({ to, from }) => {
             io.to(to).emit('declined-call')
-            await callService.createCall(to, from, 'rejected')
+            try {
+                await callService.createCall(to, from, 'rejected')
+            } catch (err) {
+                console.log("Error al registrar la llamda rechazada: ", err)
+            }
+
         })
 
         socket.on('cancel-call', async ({ from, to, userName, chatId }) => {

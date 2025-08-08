@@ -18,7 +18,9 @@ export default {
 
         if (status === 'answered') {
             data.startedAt = startedAt;
-            data.endedAt = endedAt;
+            if (endedAt) {
+                data.endedAt = endedAt;
+            }
         }
 
         return await prisma.call.create({ data });
