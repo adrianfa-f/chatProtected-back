@@ -67,7 +67,7 @@ model Call {
   toUserId   String
   status     String   @default("missed") // "missed", "answered", "declined", etc.
   seen       Boolean  @default(false)
-  startedAt  DateTime
+  startedAt  DateTime?
   endedAt    DateTime?
   createdAt  DateTime @default(now())
 
