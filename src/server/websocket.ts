@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { PrismaClient } from '@prisma/client';
 import messageService from '../services/message.service';
+import callService from 'services/call.service';
 import { sendCallNotification, sendPushNotification } from '../services/notificationService';
 
 
@@ -188,8 +189,10 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         // Cuando B responde a A
-        socket.on('answer-call', ({ from, to, sdp }) => {
+        socket.on('answer-call', async ({ from, to, sdp }) => {
             io.to(to).emit('call-answered', { from, sdp });
+            const startedAt = new Date().toISOString();
+            await callService.createCall(from, to, 'answered', new Date(startedAt));
         });
 
         // Intercambio de candidatos ICE
@@ -198,12 +201,23 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         // Finalizar llamada
-        socket.on('end-call', ({ from, to }) => {
+        socket.on('end-call', async ({ from, to }) => {
             io.to(to).emit('call-ended', { from });
+            const endedAt = new Date().toISOString();
+            await prisma.call.updateMany({
+                where: {
+                    status: 'answered',
+                    endedAt: null
+                },
+                data: {
+                    endedAt: new Date(endedAt)
+                }
+            });
         });
 
-        socket.on('decline-call', ({ to }) => {
+        socket.on('decline-call', async ({ to, from }) => {
             io.to(to).emit('declined-call')
+            await callService.createCall(to, from, 'rejected')
         })
 
         socket.on('cancel-call', async ({ from, to, userName, chatId }) => {
@@ -227,6 +241,7 @@ export const setupWebSocket = (server: HttpServer) => {
             } */
             io.to(to).emit('canceled-call');
             await sendCallNotification(to, from, userName, chatId, 'cancel-call');
+            await callService.createCall(from, to, 'missed')
         })
 
         socket.on('join-chat', (chatId: string) => {
