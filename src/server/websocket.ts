@@ -209,7 +209,7 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('call-ended', { from });
             const endedAt = new Date().toISOString();
             try {
-                await prisma.call.updateMany({
+                const call = await prisma.call.updateMany({
                     where: {
                         status: 'answered',
                         endedAt: null
@@ -218,6 +218,8 @@ export const setupWebSocket = (server: HttpServer) => {
                         endedAt: new Date(endedAt)
                     }
                 });
+                io.to(from).emit('new-call', call);
+                io.to(to).emit('new-call', call);
             } catch (err) {
                 console.log("Error al actualizar la llamada finalizada: ", err)
             }
@@ -226,7 +228,9 @@ export const setupWebSocket = (server: HttpServer) => {
         socket.on('decline-call', async ({ to, from }) => {
             io.to(to).emit('declined-call')
             try {
-                await callService.createCall(to, from, 'rejected')
+                const call = await callService.createCall(to, from, 'rejected')
+                io.to(from).emit('new-call', call);
+                io.to(to).emit('new-call', call);
             } catch (err) {
                 console.log("Error al registrar la llamda rechazada: ", err)
             }
@@ -254,7 +258,10 @@ export const setupWebSocket = (server: HttpServer) => {
             } */
             io.to(to).emit('canceled-call');
             await sendCallNotification(to, from, userName, chatId, 'cancel-call');
-            await callService.createCall(from, to, 'missed')
+            const call = await callService.createCall(from, to, 'missed');
+            io.to(from).emit('new-call', call);
+            io.to(to).emit('new-call', call);
+
         })
 
         socket.on('join-chat', (chatId: string) => {

@@ -42,5 +42,28 @@ export default {
                 startedAt: 'desc'
             }
         });
+    },
+
+    async getMissedCountForUser(userId: string) {
+        return await prisma.call.count({
+            where: {
+                toUserId: userId,
+                status: 'missed',
+                seen: false
+            }
+        });
+    },
+
+    async markAsSeenForUser(userId: string) {
+        return await prisma.call.updateMany({
+            where: {
+                toUserId: userId,
+                status: 'missed',
+                seen: false
+            },
+            data: {
+                seen: true
+            }
+        });
     }
 };
