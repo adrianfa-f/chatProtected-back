@@ -16,7 +16,7 @@ export const getMissedCount = async (req: Request, res: Response) => {
     try {
         const userId = req.body.userId;
 
-        const count = callService.getMissedCountForUser(userId)
+        const count = await callService.getMissedCountForUser(userId)
 
         res.json({ count });
     } catch (err) {
