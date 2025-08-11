@@ -160,27 +160,8 @@ export const setupWebSocket = (server: HttpServer) => {
         });
 
         socket.on('call-request', async ({ from, to, userName, chatId }) => {
-            /* const isRecipientOnline = userSocketMap.has(to);
-            if (isRecipientOnline) {
-                io.to(to).emit('call-request', { from, userName })
-            } else {
-                try {
-                    const receiverUser = await prisma.user.findUnique({
-                        where: { id: to },
-                        select: { pushSubscription: true }
-                    });
-
-                    if (receiverUser && receiverUser.pushSubscription) {
-                        await sendCallNotification(to, from, userName, chatId, 'incoming-call');
-                    }
-
-                } catch (error) {
-                    console.error('Error enviando notificación de llamada:', error);
-                }
-            } */
             io.to(to).emit('call-request', { from, userName })
             await sendCallNotification(to, from, userName, chatId, 'incoming-call');
-
         })
 
         // Cuando A llama a B
@@ -209,17 +190,40 @@ export const setupWebSocket = (server: HttpServer) => {
             io.to(to).emit('call-ended', { from });
             const endedAt = new Date().toISOString();
             try {
-                const call = await prisma.call.updateMany({
+                await prisma.call.updateMany({
                     where: {
                         status: 'answered',
-                        endedAt: null
+                        endedAt: null,
+                        OR: [
+                            { fromUserId: from, toUserId: to },
+                            { fromUserId: to, toUserId: from }
+                        ]
                     },
                     data: {
                         endedAt: new Date(endedAt)
-                    }
+                    },
                 });
-                io.to(from).emit('new-call', call);
-                io.to(to).emit('new-call', call);
+
+                const call = await prisma.call.findFirst({
+                    where: {
+                        OR: [
+                            { fromUserId: from, toUserId: to },
+                            { fromUserId: to, toUserId: from }
+                        ],
+                        status: 'answered',
+                        endedAt: new Date(endedAt)
+                    },
+                    include: {
+                        fromUser: { select: { id: true, username: true } },
+                        toUser: { select: { id: true, username: true } }
+                    },
+                    orderBy: { createdAt: 'desc' } // Última llamada primero
+                });
+
+                if (call) {
+                    io.to(from).emit('new-call', call);
+                    io.to(to).emit('new-call', call);
+                }
             } catch (err) {
                 console.log("Error al actualizar la llamada finalizada: ", err)
             }
@@ -238,24 +242,6 @@ export const setupWebSocket = (server: HttpServer) => {
         })
 
         socket.on('cancel-call', async ({ from, to, userName, chatId }) => {
-            /* const isRecipientOnline = userSocketMap.has(to);
-            if (isRecipientOnline) {
-                io.to(to).emit('canceled-call');
-            } else {
-                try {
-                    const receiverUser = await prisma.user.findUnique({
-                        where: { id: to },
-                        select: { pushSubscription: true }
-                    });
-
-                    if (receiverUser && receiverUser.pushSubscription) {
-                        await sendCallNotification(to, from, userName, chatId, 'cancel-call');
-                    }
-
-                } catch (error) {
-                    console.error('Error enviando notificación de llamada:', error);
-                }
-            } */
             io.to(to).emit('canceled-call');
             await sendCallNotification(to, from, userName, chatId, 'cancel-call');
             const call = await callService.createCall(from, to, 'missed');

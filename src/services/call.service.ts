@@ -23,7 +23,13 @@ export default {
             }
         }
 
-        return await prisma.call.create({ data });
+        return await prisma.call.create({
+            data,
+            include: {
+                fromUser: { select: { id: true, username: true } },
+                toUser: { select: { id: true, username: true } }
+            }
+        });
     },
 
     async getCallsForUser(userId: string) {
@@ -39,7 +45,7 @@ export default {
                 toUser: { select: { id: true, username: true } }
             },
             orderBy: {
-                startedAt: 'desc'
+                createdAt: 'desc'
             }
         });
     },
