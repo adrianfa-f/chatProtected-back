@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import messageService from '../services/message.service';
 import callService from '../services/call.service';
 import { sendCallNotification, sendPushNotification } from '../services/notificationService';
-import { processFile } from 'services/upload.service';
+import { processFile } from '../services/upload.service';
 
 
 const prisma = new PrismaClient();
