@@ -14,31 +14,21 @@ interface UploadParams {
 export const processFile = async ({ file, chatId, senderId, receiverId }: UploadParams) => {
     if (!file) throw new Error("No file uploaded");
 
-    let result: UploadApiResponse;
-    let fileType = 'file';
-
     try {
-        // Manejar imágenes
-        if (file.mimetype.startsWith('image/')) {
-            const base64Image = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-            result = await cloudinary.uploader.upload(base64Image, { folder: "media" });
-            fileType = 'image';
-        }
-        // Manejar documentos
-        else {
-            // Envolver en promesa para obtener la respuesta correctamente
-            result = await new Promise<UploadApiResponse>((resolve, reject) => {
-                const uploadStream = cloudinary.uploader.upload_stream(
-                    { resource_type: 'auto', folder: "docs" },
-                    (error, result) => {
-                        if (error) return reject(error);
-                        resolve(result as UploadApiResponse);
-                    }
-                );
+        // Determinar tipo de recurso basado en el MIME type
+        const resourceType = file.mimetype.startsWith('image/') ? 'image' : 'raw';
 
-                uploadStream.end(file.buffer);
-            });
-        }
+        // Subir el archivo con el resourceType correcto
+        const result = await cloudinary.uploader.upload(
+            `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+            {
+                resource_type: resourceType, // ¡Clave para documentos!
+                folder: resourceType === 'image' ? "media" : "docs"
+            }
+        );
+
+        // Determinar tipo de archivo para nuestra DB
+        const fileType = resourceType === 'image' ? 'image' : 'file';
 
         // Crear registro en base de datos
         const savedFile = await prisma.mediaFile.create({
