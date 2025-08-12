@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import messageService from '../services/message.service';
 import callService from '../services/call.service';
 import { sendCallNotification, sendPushNotification } from '../services/notificationService';
+import { processFile } from 'services/upload.service';
 
 
 const prisma = new PrismaClient();
@@ -352,6 +353,75 @@ export const setupWebSocket = (server: HttpServer) => {
                     error: 'Failed to process message',
                     details: error instanceof Error ? error.message : 'Unknown error'
                 });
+            }
+        });
+
+        socket.on('send-media', async (data) => {
+            try {
+                const { chatId, senderId, receiverId, file } = data;
+
+                // Crear un objeto que cumpla con la interfaz Express.Multer.File
+                const multerFile: Express.Multer.File = {
+                    fieldname: 'file',
+                    originalname: file.name,
+                    encoding: '7bit',
+                    mimetype: file.type,
+                    size: file.size,
+                    buffer: Buffer.from(file.data, 'base64'),
+                    stream: null as any, // No necesario para nuestro caso
+                    destination: '', // No necesario
+                    filename: file.name, // Mismo que originalname
+                    path: '', // No necesario
+                };
+
+                const savedFile = await processFile({
+                    file: multerFile,
+                    chatId,
+                    senderId,
+                    receiverId
+                });
+
+                // Emitir a los participantes del chat
+                io.to(chatId).emit('receive-media', savedFile);
+                io.to(receiverId).emit('new-media-notification', {
+                    chatId,
+                    senderId,
+                    mediaId: savedFile.id
+                });
+            } catch (error) {
+                console.error('Error al procesar archivo:', error);
+                socket.emit('media-error', { error: 'Error al procesar archivo' });
+            }
+        });
+
+        socket.on('send-link', async (data) => {
+            try {
+                const { chatId, senderId, receiverId, url } = data;
+
+                // Crear el registro del enlace
+                const savedLink = await prisma.mediaFile.create({
+                    data: {
+                        chatId,
+                        senderId,
+                        receiverId,
+                        filename: 'Enlace',
+                        mimetype: 'text/uri-list',
+                        size: 0,
+                        url,
+                        fileType: 'link'
+                    }
+                });
+
+                // Emitir a los participantes del chat
+                io.to(chatId).emit('receive-link', savedLink);
+                io.to(receiverId).emit('new-media-notification', {
+                    chatId,
+                    senderId,
+                    mediaId: savedLink.id
+                });
+            } catch (error) {
+                console.error('Error al guardar enlace:', error);
+                socket.emit('link-error', { error: 'Error al guardar enlace' });
             }
         });
 

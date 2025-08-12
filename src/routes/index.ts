@@ -5,6 +5,7 @@ import messageRouter from './message.routes';
 import userRouter from './user.routes';
 import chatRequestRouter from './chatRequest.routes';
 import callRouter from './call.routes'
+import uploadRouter from './upload.routes'
 
 const apiRouter = Router();
 
@@ -14,5 +15,6 @@ apiRouter.use('/messages', messageRouter);
 apiRouter.use('/users', userRouter);
 apiRouter.use('/chat-requests', chatRequestRouter);
 apiRouter.use('/calls', callRouter)
+apiRouter.use('/upload', uploadRouter)
 
 export default apiRouter;

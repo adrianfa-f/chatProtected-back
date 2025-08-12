@@ -29,6 +29,9 @@ model User {
 
   callsFrom    Call[]  @relation("CallFromUser")
   callsTo      Call[]  @relation("CallToUser")
+
+  sentMedia    MediaFile[] @relation("senderMedia")
+  receivedMedia MediaFile[] @relation("receiverMedia")
 }
 
 model Chat {
@@ -42,6 +45,7 @@ model Chat {
   user2   User     @relation("user2Chats", fields: [user2Id], references: [id])
   
   messages Message[]
+  mediaFiles MediaFile[]
 }
 
 model Message {
@@ -85,3 +89,22 @@ model ChatRequest {
   fromUser User @relation("fromUserRequests", fields: [fromUserId], references: [id])
   toUser   User @relation("toUserRequests", fields: [toUserId], references: [id])
 }
+
+model MediaFile {
+  id          String   @id @default(uuid())
+  chatId      String
+  senderId    String
+  receiverId  String
+  filename    String
+  mimetype    String
+  size        Int
+  url         String
+  status      String   @default("delivered")
+  fileType    String   @default("file")
+  createdAt   DateTime @default(now())
+
+  chat        Chat     @relation(fields: [chatId], references: [id])
+  sender      User     @relation("senderMedia", fields: [senderId], references: [id])
+  receiver    User     @relation("receiverMedia", fields: [receiverId], references: [id])
+}
+
