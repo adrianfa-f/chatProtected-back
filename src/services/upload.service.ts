@@ -15,22 +15,32 @@ export const processFile = async ({ file, chatId, senderId, receiverId }: Upload
     if (!file) throw new Error("No file uploaded");
 
     try {
-        // Determinar tipo de recurso basado en el MIME type
-        const resourceType = file.mimetype.startsWith('image/') ? 'image' : 'raw';
+        // Determinar tipo de archivo
+        let resourceType: 'image' | 'video' | 'raw' = 'raw';
+        let fileType: 'image' | 'file' | 'video' | 'audio' = 'file';
 
-        // Subir el archivo con el resourceType correcto
+        if (file.mimetype.startsWith('image/')) {
+            resourceType = 'image';
+            fileType = 'image';
+        } else if (file.mimetype.startsWith('video/')) {
+            resourceType = 'video';
+            fileType = 'video';
+        } else if (file.mimetype.startsWith('audio/')) {
+            resourceType = 'video'; // Cloudinary trata audio como video
+            fileType = 'audio';
+        }
+
         const result = await cloudinary.uploader.upload(
             `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
             {
-                resource_type: resourceType, // ¡Clave para documentos!
-                folder: resourceType === 'image' ? "media" : "docs"
+                resource_type: resourceType,
+                folder: "media",
+                public_id: file.originalname.replace(/\.[^/.]+$/, ""),
+                use_filename: true,
+                unique_filename: false
             }
         );
 
-        // Determinar tipo de archivo para nuestra DB
-        const fileType = resourceType === 'image' ? 'image' : 'file';
-
-        // Crear registro en base de datos
         const savedFile = await prisma.mediaFile.create({
             data: {
                 chatId,

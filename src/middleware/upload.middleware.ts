@@ -5,17 +5,16 @@ const storage = multer.memoryStorage();
 const upload = multer({
     storage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB (aumentado)
+        fileSize: 25 * 1024 * 1024, // 25MB (para videos cortos)
     },
     fileFilter: (_req, file, cb) => {
         const allowedTypes = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'application/pdf',
-            'text/plain',
+            'image/jpeg', 'image/png', 'image/gif',
+            'application/pdf', 'text/plain',
             'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'video/mp4', 'video/quicktime', // Videos
+            'audio/mpeg', 'audio/wav', 'audio/webm' // Audios
         ];
 
         if (allowedTypes.includes(file.mimetype)) {
